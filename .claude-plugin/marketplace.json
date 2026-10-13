@@ -1,0 +1,14 @@
+{
+  "name": "mimirs-well",
+  "description": "Mimir's Well: capture reusable patterns and know, by measurement, when a session should hand off.",
+  "owner": {
+    "name": "yagocdias"
+  },
+  "plugins": [
+    {
+      "name": "mimirs-well",
+      "source": ".",
+      "description": "Meta-learning skill + measured session-saturation signal + Handoff Package."
+    }
+  ]
+}

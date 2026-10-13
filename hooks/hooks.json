@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/saturation-hook.cjs"],
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "name": "mimirs-well",
+  "displayName": "Mimir's Well",
+  "version": "2.0.0",
+  "description": "Meta-learning skill that captures reusable patterns, plus a measured session-saturation signal (real token counts, not guesses) and a Handoff Package for clean migration to a new session.",
+  "author": {
+    "name": "yagocdias"
+  },
+  "repository": "https://github.com/yagocdias/mimirs-well",
+  "license": "MIT",
+  "keywords": ["meta-learning", "patterns", "handoff", "context-window", "saturation", "tokens"],
+  "userConfig": {
+    "context_window": {
+      "type": "number",
+      "title": "Context window (tokens)",
+      "description": "Leave 0 to detect it automatically. Set 200000 or 1000000 to force a size.",
+      "default": 0,
+      "min": 0
+    },
+    "cost_factor": {
+      "type": "number",
+      "title": "Yellow signal: turn cost multiplier",
+      "description": "Warn when a turn re-sends this many times the context of the session's first turn (each turn re-reads the whole context, so this is how much more a turn costs now).",
+      "default": 4,
+      "min": 1.5,
+      "max": 50
+    },
+    "red_pct": {
+      "type": "number",
+      "title": "Red signal: % of the context window",
+      "description": "Warn that it's time to hand off when the context reaches this percentage of the window.",
+      "default": 70,
+      "min": 20,
+      "max": 95
+    },
+    "echo_in_reply": {
+      "type": "boolean",
+      "title": "Ask Claude to repeat the meter line in every reply",
+      "description": "For interfaces that don't show hook messages (e.g. some desktop/IDE surfaces). Adds one line to every reply.",
+      "default": false
+    }
+  }
+}
