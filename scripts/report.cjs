@@ -1,7 +1,8 @@
 /**
  * Mimir's Well — on-demand measurement report.
  *
- *   node report.cjs                 # the session the hook last saw in this folder
+ *   node report.cjs                 # this session (CLAUDE_CODE_SESSION_ID), else the
+ *                                   # one the hook last saw in this folder
  *   node report.cjs <transcript>    # a specific transcript (.jsonl)
  *
  * The skill runs this when the user asks "is this session saturated?", so the
@@ -29,6 +30,12 @@ function newestSessionTranscript() {
 function locate() {
   const arg = process.argv[2];
   if (arg) return { transcript: arg, sessionId: null, how: "given as argument" };
+  // Claude Code exports the session id to the commands it runs: when the skill
+  // runs this report, that names the very session asking, even with two
+  // sessions open in the same folder.
+  const sid = process.env.CLAUDE_CODE_SESSION_ID;
+  const own = sid ? meter.readSession(sid) : {};
+  if (own.transcript) return { transcript: own.transcript, sessionId: sid, how: "this session" };
   const ptr = meter.readJson(meter.pointerFile(process.cwd()));
   if (ptr.transcript) return { transcript: ptr.transcript, sessionId: ptr.sessionId, how: "last session seen in this folder" };
   const s = newestSessionTranscript();

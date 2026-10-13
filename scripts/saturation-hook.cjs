@@ -66,18 +66,22 @@ function main() {
   const input = readStdin();
   if (!input || !input.transcript_path) done(null);
 
-  let reqs;
+  const sid = input.session_id;
+  const state = meter.readSession(sid);
+
+  // Only the lines appended since the last prompt; the running totals live in
+  // the state file. Without both (first prompt, v2.0 state), read it all.
+  let read, tally;
   try {
-    reqs = meter.readRequests(input.transcript_path);
+    read = meter.readNewRequests(input.transcript_path, state.tally ? state.scan : undefined);
+    tally = meter.tally(read.restarted ? null : state.tally, read.reqs);
   } catch {
     done(null);
   }
-  if (!reqs || !reqs.length) done(null);
 
   const opts = meter.options();
-  const sid = input.session_id;
-  const state = meter.readSession(sid);
-  const m = meter.measure(reqs, { ...opts, windowFromStatusLine: state.window || 0 });
+  const m = meter.measureTally(tally, { ...opts, windowFromStatusLine: state.window || 0 });
+  if (!m) done(null);
 
   // Re-arm after a /compact: if the context fell below a level, crossing it
   // again must warn again.
@@ -105,6 +109,8 @@ function main() {
     cwd: input.cwd,
     opening: m.opening,
     warned,
+    scan: read.scan,
+    tally,
     // The status line isn't a plugin component and can't read plugin options:
     // hand it the effective thresholds so both surfaces agree.
     costFactor: opts.costFactor,
@@ -115,6 +121,7 @@ function main() {
     transcript: input.transcript_path,
     updatedAt: Date.now(),
   });
+  meter.sweepState();
 
   // systemMessage: one line for the user every turn (shown by the terminal UI).
   done({ systemMessage: line, hookSpecificOutput: out });

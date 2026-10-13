@@ -98,7 +98,8 @@ Defaults work out of the box. To change them: `/plugin configure mimirs-well@mim
 ## Privacy and what it touches
 
 - Reads your **local** session transcript (the `.jsonl` Claude Code already writes) to count tokens.
-- Writes small state files (first-turn size, last level warned) under your OS temp dir, in `mimirs-well/`.
+- Writes small state files (first-turn size, last level warned, how far the transcript was read)
+  under your OS temp dir, in `mimirs-well/`. Files untouched for 7 days are deleted.
 - Sends nothing anywhere. No network calls, no dependencies.
 
 ## Known limits
@@ -108,7 +109,9 @@ Defaults work out of the box. To change them: `/plugin configure mimirs-well@mim
   The status line uses documented fields and is not affected.
 - **The hook can't see the window size**; it detects it (see `context_window`). Configure it if
   detection is wrong for your setup.
-- **Two sessions in the same folder at once:** `report.cjs` reports the one that sent the last prompt.
+- **`report.cjs` run by hand, outside Claude Code,** can't know which session you mean: it reports
+  the one that last sent a prompt in that folder. Pass a transcript path to choose. (When Claude
+  runs it, it measures its own session.)
 
 ## Testing it
 
@@ -120,8 +123,8 @@ A 15-minute checklist for a first-time tester: [TESTING.md](TESTING.md).
 node --test test/meter.test.cjs
 ```
 
-The suite runs the hook end to end on synthetic transcripts and checks that the hook and the
-status line can't disagree about the level.
+The suite runs the hook end to end on synthetic transcripts — including exactly as `hooks.json`
+declares it — and checks that the hook and the status line can't disagree about the level.
 
 ## License
 

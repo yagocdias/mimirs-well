@@ -1,4 +1,4 @@
-// Run with: node --test test/
+// Run with: node --test test/meter.test.cjs
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
@@ -11,15 +11,20 @@ const meter = require(path.join(ROOT, "scripts", "meter.cjs"));
 const statusline = require(path.join(ROOT, "scripts", "statusline.cjs"));
 
 // Every child process gets its own temp dir, so tests never touch real state.
+// Nor the real session: these tests often run inside Claude Code itself.
 function sandbox() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mimir-test-"));
-  return { dir, env: { ...process.env, TMP: dir, TEMP: dir, TMPDIR: dir } };
+  const env = { ...process.env, TMP: dir, TEMP: dir, TMPDIR: dir };
+  for (const k of Object.keys(env))
+    if (k === "CLAUDE_CODE_SESSION_ID" || k.startsWith("CLAUDE_PLUGIN_OPTION_") || k.startsWith("MIMIR_")) delete env[k];
+  return { dir, env };
 }
 
 // A transcript line shaped like Claude Code's (only the fields the meter reads).
-function req(id, context, { output = 500 } = {}) {
+function req(id, context, { output = 500, sidechain = false } = {}) {
   return JSON.stringify({
     type: "assistant",
+    isSidechain: sidechain,
     requestId: "req_" + id,
     message: {
       model: "claude-test",
@@ -60,6 +65,51 @@ test("duplicate requestIds are counted once", () => {
   const file = path.join(sb.dir, "dup.jsonl");
   fs.writeFileSync(file, [req(1, 50_000), req(1, 50_000), req(2, 60_000)].join("\n"));
   assert.equal(meter.readRequests(file).length, 2);
+});
+
+test("subagent (sidechain) requests are not this session's context", () => {
+  const sb = sandbox();
+  const file = path.join(sb.dir, "side.jsonl");
+  fs.writeFileSync(file, [req(1, 50_000), req(2, 60_000), req(3, 9_000, { sidechain: true })].join("\n") + "\n");
+  const reqs = meter.readRequests(file);
+  assert.equal(reqs.length, 2);
+  assert.equal(meter.measure(reqs).context, 60_000);
+});
+
+test("incremental read: same totals as a full read, one append at a time", () => {
+  const sb = sandbox();
+  const file = path.join(sb.dir, "inc.jsonl");
+  const contexts = [20_000, 35_000, 35_000, 80_000, 30_000, 120_000];
+  fs.writeFileSync(file, "");
+  let scan, t = null;
+  contexts.forEach((c, i) => {
+    // A request spans several lines; its duplicate may land in the next read.
+    fs.appendFileSync(file, req(i, c) + "\n" + (i % 2 ? req(i, c) + "\n" : ""));
+    const r = meter.readNewRequests(file, scan);
+    scan = r.scan;
+    t = meter.tally(r.restarted ? null : t, r.reqs);
+  });
+  assert.deepEqual(meter.measureTally(t), meter.measure(meter.readRequests(file)));
+  assert.equal(t.requests, contexts.length);
+});
+
+test("incremental read: a line still being written waits; a shorter file starts over", () => {
+  const sb = sandbox();
+  const file = path.join(sb.dir, "partial.jsonl");
+  const second = req(2, 60_000);
+  fs.writeFileSync(file, req(1, 50_000) + "\n" + second.slice(0, 40));
+  const a = meter.readNewRequests(file);
+  assert.equal(a.reqs.length, 1);
+
+  fs.appendFileSync(file, second.slice(40) + "\n");
+  const b = meter.readNewRequests(file, a.scan);
+  assert.equal(b.restarted, false);
+  assert.deepEqual(b.reqs.map((r) => r.id), ["req_2"]);
+
+  fs.writeFileSync(file, req(9, 10_000) + "\n");
+  const c = meter.readNewRequests(file, b.scan);
+  assert.equal(c.restarted, true);
+  assert.deepEqual(c.reqs.map((r) => r.id), ["req_9"]);
 });
 
 test("window: config > status line > inference from a context above 200k > 200k", () => {
@@ -178,4 +228,77 @@ test("status line: uses the harness numbers and records the window for the hook"
   assert.equal(r.stdout, "🟡 310k (31% of 1M) · turn ~4.2x the first · ~$6.94 est.");
   const state = JSON.parse(fs.readFileSync(path.join(sb.dir, "mimirs-well", "session-sl.json"), "utf8"));
   assert.equal(state.window, 1_000_000);
+});
+
+test("hooks.json: every hook runs exactly as Claude Code would spawn it", () => {
+  // Unit tests call the script directly; this catches a manifest that points
+  // at nothing (the hook fails silently by design, so nobody would notice).
+  const sb = sandbox();
+  const expand = (s) => s.split("${CLAUDE_PLUGIN_ROOT}").join(ROOT);
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "hooks", "hooks.json"), "utf8"));
+  const payload = JSON.stringify({
+    session_id: "manifest",
+    transcript_path: writeTranscript(sb.dir, [20_000, 40_000]),
+    cwd: sb.dir,
+    hook_event_name: "UserPromptSubmit",
+  });
+  let ran = 0;
+  for (const [event, groups] of Object.entries(manifest.hooks))
+    for (const group of groups)
+      for (const h of group.hooks) {
+        assert.equal(h.type, "command", event);
+        const opts = { input: payload, env: { ...sb.env, CLAUDE_PLUGIN_ROOT: ROOT }, encoding: "utf8" };
+        // Exec form (`args`): no shell. Otherwise the command line goes to a shell.
+        const r = h.args
+          ? spawnSync(expand(h.command), h.args.map(expand), opts)
+          : spawnSync(expand(h.command), { ...opts, shell: true });
+        assert.equal(r.status, 0, event + ": " + (r.error || r.stderr));
+        assert.match(JSON.parse(r.stdout).systemMessage, /^Mimir's Well · 🟢/, event);
+        ran++;
+      }
+  assert.ok(ran > 0, "hooks.json declares no hooks");
+});
+
+test("report: the session that runs it beats the folder's last-prompt pointer", () => {
+  const sb = sandbox();
+  const mine = path.join(sb.dir, "mine");
+  const other = path.join(sb.dir, "other");
+  fs.mkdirSync(mine);
+  fs.mkdirSync(other);
+  runHook(sb, { session_id: "mine", transcript_path: writeTranscript(mine, [20_000, 145_000]), cwd: sb.dir });
+  // A second session in the same folder sends the last prompt.
+  runHook(sb, { session_id: "other", transcript_path: writeTranscript(other, [20_000, 30_000]), cwd: sb.dir });
+  const r = spawnSync(process.execPath, [path.join(ROOT, "scripts", "report.cjs")], {
+    cwd: sb.dir,
+    env: { ...sb.env, CLAUDE_CODE_SESSION_ID: "mine" },
+    encoding: "utf8",
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /source \.+ this session/);
+  assert.match(r.stdout, /context now \.+ 145,000 tokens/);
+});
+
+test("hook sweeps state untouched for a week, at most once a day", () => {
+  const sb = sandbox();
+  const dir = path.join(sb.dir, "mimirs-well");
+  fs.mkdirSync(dir);
+  const old = path.join(dir, "session-old.json");
+  const recent = path.join(dir, "session-recent.json");
+  const notOurs = path.join(dir, "notes.txt");
+  for (const f of [old, recent, notOurs]) fs.writeFileSync(f, "{}");
+  const eightDaysAgo = (Date.now() - 8 * 24 * 3600 * 1000) / 1000;
+  fs.utimesSync(old, eightDaysAgo, eightDaysAgo);
+  fs.utimesSync(notOurs, eightDaysAgo, eightDaysAgo);
+
+  const ask = () => runHook(sb, { session_id: "sweep", transcript_path: writeTranscript(sb.dir, [20_000]), cwd: sb.dir });
+  ask();
+  assert.equal(fs.existsSync(old), false, "a week-old state file is deleted");
+  assert.equal(fs.existsSync(recent), true);
+  assert.equal(fs.existsSync(notOurs), true, "only our own files");
+
+  // Already swept today: a newly stale file waits for tomorrow.
+  fs.writeFileSync(old, "{}");
+  fs.utimesSync(old, eightDaysAgo, eightDaysAgo);
+  ask();
+  assert.equal(fs.existsSync(old), true);
 });

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased (2.1.0)
+
+- **The hook reads only what's new.** It keeps how far it read and the running totals in its
+  state file, instead of re-reading the whole transcript before every prompt.
+- **Subagent turns are ignored** (`isSidechain`), so they can never pass for this session's context.
+- **`report.cjs` measures the session that runs it** (`CLAUDE_CODE_SESSION_ID`), even with two
+  sessions in the same folder.
+- **Old state is cleaned up:** at most once a day, state files untouched for 7 days are deleted.
+- **Tests:** `hooks.json` is now run exactly as Claude Code spawns it; incremental reads,
+  subagent lines, session lookup and cleanup are covered.
+
 ## 2.0.0
 
 - **Measured saturation.** A Claude Code `UserPromptSubmit` hook reads real token counts every

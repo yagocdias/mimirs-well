@@ -23,7 +23,7 @@
  * See skills/mimirs-well/references/context-economics.md.
  *
  * ⚠️ DEPENDENCY OUTSIDE YOUR CONTROL
- * `readRequests` parses Claude Code's transcript (.jsonl). Its format is an
+ * `parseLine` reads Claude Code's transcript (.jsonl). Its format is an
  * internal detail, not a documented API, and may change in any release. Every
  * caller must treat a failure here as "no measurement", never as an error.
  */
@@ -42,35 +42,93 @@ const DEFAULTS = Object.freeze({
   yellowFloorPct: 15, // yellow never fires below this % of the window (tiny first turns)
 });
 
-/** Reads the transcript and returns its API requests, de-duplicated by requestId. */
-function readRequests(file) {
-  const raw = fs.readFileSync(file, "utf8");
-  const seen = new Set();
+/** One transcript line -> one API request, or null if the line isn't one. */
+function parseLine(line) {
+  // Cheap filter: transcripts carry huge lines (tool results, snapshots)
+  // with no usage at all. Only lines with usage are worth JSON.parse.
+  if (!line || line.indexOf("cache_read_input_tokens") === -1) return null;
+  let o;
+  try {
+    o = JSON.parse(line);
+  } catch {
+    return null;
+  }
+  if (o.type !== "assistant" || !o.message || !o.message.usage) return null;
+  // A subagent's turns carry the subagent's context, not this session's. Current
+  // versions write them to their own file; if one ever writes them here, the
+  // "last request" would be the subagent's and the meter would read it as ours.
+  if (o.isSidechain) return null;
+  const u = o.message.usage;
+  return {
+    id: o.requestId || o.message.id || o.uuid,
+    model: o.message.model,
+    fresh: u.input_tokens || 0,
+    cacheRead: u.cache_read_input_tokens || 0,
+    cacheWrite: u.cache_creation_input_tokens || 0,
+    output: u.output_tokens || 0,
+  };
+}
+
+/** Parses lines, skipping requests already in `seen` (a request spans several lines). */
+function collect(lines, seen) {
   const reqs = [];
-  for (const line of raw.split("\n")) {
-    // Cheap filter: transcripts carry huge lines (tool results, snapshots)
-    // with no usage at all. Only lines with usage are worth JSON.parse.
-    if (!line || line.indexOf("cache_read_input_tokens") === -1) continue;
-    let o;
-    try {
-      o = JSON.parse(line);
-    } catch {
-      continue;
-    }
-    if (o.type !== "assistant" || !o.message || !o.message.usage) continue;
-    const id = o.requestId || (o.message && o.message.id) || o.uuid;
-    if (seen.has(id)) continue;
-    seen.add(id);
-    const u = o.message.usage;
-    reqs.push({
-      model: o.message.model,
-      fresh: u.input_tokens || 0,
-      cacheRead: u.cache_read_input_tokens || 0,
-      cacheWrite: u.cache_creation_input_tokens || 0,
-      output: u.output_tokens || 0,
-    });
+  for (const line of lines) {
+    const r = parseLine(line);
+    if (!r || seen.has(r.id)) continue;
+    seen.add(r.id);
+    reqs.push(r);
   }
   return reqs;
+}
+
+/** Reads the whole transcript and returns its API requests, de-duplicated by requestId. */
+function readRequests(file) {
+  return collect(fs.readFileSync(file, "utf8").split("\n"), new Set());
+}
+
+// The lines of one request are written together, so remembering the last few
+// ids is enough to de-duplicate across reads.
+const RECENT_IDS = 64;
+
+/**
+ * Reads only what was appended since the last read. The hook runs before
+ * every prompt and transcripts reach tens of MB, so re-reading the whole file
+ * each time grows with the session — exactly when the meter matters most.
+ *
+ * `scan` is what the previous call returned ({} the first time). Only complete
+ * lines are consumed: a line still being written is read next time. If the
+ * file is a different one or got shorter, it starts over and says so
+ * (`restarted`), so the caller can drop what it had accumulated.
+ */
+function readNewRequests(file, scan = {}) {
+  const restarted = scan.file !== file || !(scan.offset >= 0) || scan.offset > fs.statSync(file).size;
+  const offset = restarted ? 0 : scan.offset;
+  const seen = new Set(restarted ? [] : scan.recentIds || []);
+
+  const fd = fs.openSync(file, "r");
+  let buf;
+  try {
+    const len = Math.max(0, fs.fstatSync(fd).size - offset);
+    buf = Buffer.alloc(len);
+    let got = 0;
+    while (got < len) {
+      const n = fs.readSync(fd, buf, got, len - got, offset + got);
+      if (!n) break;
+      got += n;
+    }
+    buf = buf.subarray(0, got);
+  } finally {
+    fs.closeSync(fd);
+  }
+
+  // Cut at the last newline byte: never splits a line, nor a UTF-8 character.
+  const end = buf.lastIndexOf(0x0a) + 1;
+  const reqs = collect(buf.toString("utf8", 0, end).split("\n"), seen);
+  return {
+    reqs,
+    restarted,
+    scan: { file, offset: offset + end, recentIds: [...seen].slice(-RECENT_IDS) },
+  };
 }
 
 /** Context size of one request (input side only, cache included). */
@@ -108,16 +166,38 @@ function lightOf(level) {
   return level === 2 ? "🔴" : level === 1 ? "🟡" : "🟢";
 }
 
+/**
+ * Running totals of a session's requests: all `measure` needs, small enough to
+ * keep in the state file so the hook can add only the new requests each turn.
+ */
+function tally(prev, reqs) {
+  const t = { requests: 0, opening: 0, context: 0, maxContext: 0, sentTotal: 0, cacheReadTotal: 0, outputTotal: 0, ...prev };
+  for (const r of reqs) {
+    const c = contextOf(r);
+    if (!t.requests) t.opening = c;
+    t.requests++;
+    t.context = c;
+    t.maxContext = Math.max(t.maxContext, c);
+    t.sentTotal += c;
+    t.cacheReadTotal += r.cacheRead;
+    t.outputTotal += r.output;
+  }
+  return t;
+}
+
 /** Everything the hook and the report print, computed once. */
 function measure(reqs, opts = {}) {
-  if (!reqs.length) return null;
-  const context = contextOf(reqs[reqs.length - 1]);
-  const opening = contextOf(reqs[0]) || context;
-  const maxContextSeen = reqs.reduce((m, r) => Math.max(m, contextOf(r)), 0);
+  return measureTally(tally(null, reqs), opts);
+}
+
+function measureTally(t, opts = {}) {
+  if (!t || !t.requests) return null;
+  const context = t.context;
+  const opening = t.opening || context;
   const window = resolveWindow({
     configured: opts.configuredWindow || 0,
     fromStatusLine: opts.windowFromStatusLine || 0,
-    maxContextSeen,
+    maxContextSeen: t.maxContext,
   });
   const level = levelOf({
     context,
@@ -127,8 +207,6 @@ function measure(reqs, opts = {}) {
     redPct: opts.redPct,
     yellowFloorPct: opts.yellowFloorPct,
   });
-  const sentTotal = reqs.reduce((s, r) => s + contextOf(r), 0);
-  const cacheReadTotal = reqs.reduce((s, r) => s + r.cacheRead, 0);
   return {
     context,
     opening,
@@ -137,10 +215,10 @@ function measure(reqs, opts = {}) {
     pct: Math.round((100 * context) / window),
     level,
     light: lightOf(level),
-    requests: reqs.length,
-    sentTotal,
-    cacheReadShare: sentTotal ? cacheReadTotal / sentTotal : 0,
-    outputTotal: reqs.reduce((s, r) => s + r.output, 0),
+    requests: t.requests,
+    sentTotal: t.sentTotal,
+    cacheReadShare: t.sentTotal ? t.cacheReadTotal / t.sentTotal : 0,
+    outputTotal: t.outputTotal,
   };
 }
 
@@ -229,16 +307,46 @@ function updateSession(sessionId, patch) {
   writeJson(sessionFile(sessionId), { ...cur, ...patch, updatedAt: Date.now() });
 }
 
+const DAY = 24 * 60 * 60 * 1000;
+const STATE_MAX_AGE = 7 * DAY;
+
+/**
+ * One state file per session would pile up forever. At most once a day,
+ * delete the ones untouched for a week: a session idle that long has no
+ * meter worth keeping (the worst case is one repeated warning).
+ */
+function sweepState(now = Date.now()) {
+  const marker = path.join(STATE_DIR, "last-sweep.json");
+  if (now - (readJson(marker).at || 0) < DAY) return;
+  writeJson(marker, { at: now });
+  try {
+    for (const f of fs.readdirSync(STATE_DIR)) {
+      if (!/^(session|latest)-.*\.json$/.test(f)) continue;
+      const file = path.join(STATE_DIR, f);
+      try {
+        if (now - fs.statSync(file).mtimeMs > STATE_MAX_AGE) fs.unlinkSync(file);
+      } catch {
+        /* another session got there first */
+      }
+    }
+  } catch {
+    /* convenience only */
+  }
+}
+
 module.exports = {
   WINDOW_STANDARD,
   WINDOW_EXTENDED,
   DEFAULTS,
   readRequests,
+  readNewRequests,
   contextOf,
   resolveWindow,
   levelOf,
   lightOf,
+  tally,
   measure,
+  measureTally,
   meterLine,
   k,
   options,
@@ -249,4 +357,5 @@ module.exports = {
   pointerFile,
   readSession,
   updateSession,
+  sweepState,
 };

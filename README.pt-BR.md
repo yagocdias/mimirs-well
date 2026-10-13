@@ -93,7 +93,8 @@ Os padrões já funcionam. Para mudar: `/plugin configure mimirs-well@mimirs-wel
 ## Privacidade
 
 - Lê o transcript **local** da sessão (o `.jsonl` que o Claude Code já grava) para contar tokens.
-- Grava arquivos pequenos de estado na pasta temporária do sistema, em `mimirs-well/`.
+- Grava arquivos pequenos de estado na pasta temporária do sistema, em `mimirs-well/`. Os que ficam
+  7 dias sem uso são apagados.
 - Não envia nada para lugar nenhum. Sem chamadas de rede, sem dependências.
 
 ## Limites conhecidos
@@ -102,7 +103,9 @@ Os padrões já funcionam. Para mudar: `/plugin configure mimirs-well@mimirs-wel
   mudá-lo, o medidor se cala (falha em silêncio, de propósito) até o leitor ser atualizado. A
   statusline usa campos documentados e não é afetada.
 - **O hook não enxerga o tamanho da janela**: ele deduz (veja `context_window`).
-- **Duas sessões na mesma pasta ao mesmo tempo:** o `report.cjs` mede a que mandou o último prompt.
+- **O `report.cjs` rodado à mão, fora do Claude Code,** não sabe de qual sessão você fala: mede a
+  que mandou o último prompt naquela pasta. Passe o caminho de um transcript para escolher. (Quando
+  o Claude o roda, ele mede a própria sessão.)
 
 ## Testar
 
