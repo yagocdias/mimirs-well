@@ -1,73 +1,47 @@
 ---
 name: mimirs-well
 description: >
-  A meta-learning skill that extracts reusable patterns and efficient solutions from any
-  project or conversation, regardless of domain. Use whenever the user wants to capture
-  what worked, identify transferable approaches, build a skill from experience, or compare
-  projects for common wisdom. Activates passively when Claude notices elegant solutions,
-  non-obvious decisions, or recurring patterns — surfacing a Sentinel signal to offer
-  capture. Also monitors session saturation — by real token measurement when its Claude Code
-  hook is installed — and proactively generates a Handoff Package for clean migration to a
-  new chat. Trigger on: "extract patterns", "what can we reuse", "feed Mimir", "open the Well",
-  "is this chat saturated", "how much context are we using", a Mimir's Well saturation
-  signal in context, or any reflection on lessons learned. Bias toward triggering.
+  Meta-learning across projects: extracts reusable patterns from a project or conversation,
+  quietly flags lessons worth keeping as they happen (Sentinel), keeps them in a Well shared by
+  all projects, and tells — by measurement, when its Claude Code hook is installed — when a
+  session should hand off to a fresh one, writing the Handoff Package. Use when the user wants to
+  capture what worked, extract or compare patterns, reuse lessons from other projects, turn
+  experience into a skill, asks whether the session is saturated or how much context is used,
+  says "feed Mimir" or "open the Well", or when a Mimir's Well block (🟡/🔴 saturation, session
+  start) is in context. Not for ordinary coding or writing requests that involve none of these.
 ---
 
 # Mimir's Well
 
-*Version 2.0 — adds measured saturation (Claude Code hook + report) and periodic re-evaluation.*
+*Version 2.1.* Mimir guarded a well of wisdom beneath Yggdrasil; Odin gave an eye to drink
+from it. Wisdom is costly to acquire, worth preserving, and meant to be consulted — not
+rediscovered from scratch each time. This skill distills what is genuinely valuable from any
+project or conversation and keeps it where it can be consulted, reused, or grown into a skill.
 
-A collaborative meta-learning system. Its purpose: distill what is genuinely valuable from
-any project, conversation, or domain — and preserve it in a form that can be consulted,
-reused, or grown into a new skill.
+**Speak the user's language.** Write every artifact — reports, seeds, log entries, anchors,
+handoffs — in the language of the conversation, translating the templates' headings. The
+signals keep their emoji (⚗️ 🌊 🟡 🔴); their words are translated. Mimir's Well blocks injected
+by hooks arrive in English: relay them in the user's language. File names stay ASCII kebab-case.
 
-The name comes from Norse mythology. Mimir guarded a well of wisdom beneath Yggdrasil.
-Odin sacrificed an eye to drink from it. The insight: wisdom is costly to acquire, worth
-preserving, and meant to be consulted — not rediscovered from scratch each time.
+## The modes
 
----
+| Mode | When | Read |
+|---|---|---|
+| **Extraction** | The user asks to extract patterns from a project or experience | `references/extraction.md` |
+| **Sentinel** | Always, quietly, during normal work | below; `references/sentinel-log.md` |
+| **Synthesis** | The user wants to compare projects or reuse what other projects taught | below |
+| **Saturation** | A 🟡/🔴 block in context, the user asks, or a re-evaluation finds it | below; `references/handoff.md` |
 
-## Three Modes
+## The Well on disk
 
-### Mode 1 — Extraction (Intentional)
-Triggered when the user explicitly wants to extract patterns from a project or experience.
-A structured, collaborative dialogue. Claude asks, the user responds, Claude reflects
-hypotheses back, the user confirms or corrects. The output is a Pattern Report + Skill Seed.
+Where there is a file system (Claude Code), everything the Well produces is saved in one global
+Well, one folder per project, so it outlives the session and projects can be read side by side.
+On claude.ai, without a file system, show the artifacts in the reply.
 
-### Mode 2 — Sentinel (Passive)
-Triggered when Claude, during any normal conversation, detects something worth capturing:
-an elegant solution, a non-obvious decision, a recurring pattern, a hard lesson.
-Claude surfaces a brief signal — never interrupts — and lets the user decide whether to capture.
-
-### Mode 3 — Saturation Monitor (Continuous)
-Runs in parallel with Sentinel mode. Watches whether the conversation is approaching the
-limits of productive continuation — technically (context size and cost) or cognitively
-(too many topics, loss of focus). When saturation is detected, alerts the user and generates
-a Handoff Package for clean migration to a new session.
-
----
-
-## The Well on Disk
-
-Where there is a file system (Claude Code), the Well keeps what it produces in files, so it
-outlives the session and every project can be read side by side. On claude.ai, without one,
-show the artifacts in the reply as before.
-
-**One global Well, one folder per project.** The plugin's session-start hook puts this
-project's folder in context. If it isn't there, ask the plugin:
-
-```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/well.cjs" --root "${user_config.well_dir}"
-```
-
-Before the first write in a project, create its folder (it prints the same paths):
-
-```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/well.cjs" ensure --root "${user_config.well_dir}"
-```
-
-If those paths still read literally `${...}`, the plugin isn't installed: use
-`~/.mimir/projects/<project folder name>/` and create it yourself.
+The plugin's session-start hook puts this project's folder in context. If it isn't there:
+`node "${CLAUDE_PLUGIN_ROOT}/scripts/well.cjs" --root "${user_config.well_dir}"`. Before the
+first write in a project, create the folder with the same command plus `ensure`. If those paths
+still read literally `${...}`, the plugin isn't installed: use `~/.mimir/projects/<project folder name>/`.
 
 | Artifact | File, inside the project's folder | How |
 |---|---|---|
@@ -79,261 +53,80 @@ If those paths still read literally `${...}`, the plugin isn't installed: use
 | Handoff Package | `handoffs/YYYY-MM-DD-HHMM.md` | new file |
 
 Save each artifact when you produce it and say where in one line. Show it in the reply too when
-the user needs to read it now (a Handoff Package to paste, a report to review).
-
----
-
-## Mode 1: Extraction Process
-
-### Phase 0 — Orient
-Before asking anything, read what's already in context: code, documents, descriptions,
-prior conversation. Extract what you can infer without asking. Then open with a brief
-orientation summary:
-
-> "I can see this is a [type of project] involving [key elements]. Before we go deeper,
-> let me confirm my understanding — then I'll ask about what I can't infer."
-
-This respects the user's time and signals that Claude is paying attention.
-
-### Phase 1 — Three Waves of Questions
-Ask questions in waves, not all at once. Each wave builds on the previous answers.
-Maximum 3 questions per wave. Wait for responses before proceeding.
-
-**Wave 1 — Decisions**
-Focus on the choices that shaped the project. The goal: uncover principles.
-- What were the most important decisions made in this project?
-- What alternatives were considered and why were they rejected?
-- Is there a decision you'd make differently now? Why?
-
-**Wave 2 — Friction**
-Focus on what resisted and how it was overcome. The goal: uncover solutions.
-- What was the hardest problem you faced?
-- What broke, failed, or surprised you negatively — and how did you handle it?
-- Was there a moment where you had to rethink the approach entirely?
-
-**Wave 3 — Surprises**
-Focus on what exceeded or fell short of expectations. The goal: uncover real wisdom.
-- What worked better than expected?
-- What turned out to be simpler than you feared?
-- What would you tell someone starting a similar project?
+the user needs to read it now.
 
-### Phase 2 — Pattern Reflection
-After each wave, Claude synthesizes and reflects hypotheses back before asking more.
-This is the core of the collaborative loop.
+## Sentinel
 
-Format for reflection:
-> "From what you've shared, I'm seeing a few possible patterns:
-> - [Pattern A]: [brief description] — does this feel accurate?
-> - [Pattern B]: [brief description] — or is this too specific to this project?
-> - [Pattern C]: [brief description] — worth capturing, or edge case?"
+Watch for a solution that is notably elegant or non-obvious, a decision that reveals a deeper
+principle, a pattern that recurs, a lesson learned the hard way, an approach that transfers
+cleanly. At a natural pause — never mid-thought — offer it in one line:
 
-The user confirms, corrects, or deepens. Claude updates its model before the next wave.
+> ⚗️ *Mimir's Well noticed something worth capturing: [one line]. Want to log this?*
 
-### Phase 3 — Continuity Anchor
-Before producing the final output, generate a Continuity Anchor — a compact summary
-the user can paste at the start of a future session to resume extraction:
+If yes: write a 3–5 line micro-pattern (format in `references/sentinel-log.md`) and append it to
+`well-log.md`. If no: carry on, no friction. At the end of a session with entries, offer to
+compile them into a Pattern Report or Skill Seed.
 
-```
-MIMIR'S WELL — CONTINUITY ANCHOR
-Project: [name]
-Domain: [domain]
-Session: [date / session number]
-Already captured: [bullet list of confirmed patterns]
-Still open: [questions or areas not yet explored]
-Next step: [what to do when resuming]
-```
+**Signal sparingly.** One strong signal beats three weak ones; the user's trust depends on the
+Well knowing what's truly worth capturing.
 
-This solves the memory gap between sessions. Always generate this, even if the session
-felt complete — projects often have more to give. Save it as `anchor.md` (see The Well on Disk);
-when resuming an extraction, read that file before asking anything.
+## After a pattern is confirmed: make it act
 
-### Phase 4 — Final Output
-Produce two artifacts:
+The Well keeps the why and the cross-project view, but Claude only acts on what it sees at the
+start of a session. When a confirmed pattern is a rule for this project's future work (a
+convention, a decision not to revisit), offer to also save it where the next session will see
+it: Claude Code's memory, or the project's `CLAUDE.md`. That file belongs to the repo: show the
+exact lines and ask before writing. One line per rule, pointing back to the report file.
 
-#### 4a — Pattern Report
-A structured document capturing everything extracted. Use the template in
-`references/report-template.md`. In short:
+When a Skill Seed is solid enough, offer to grow it into a real skill — the end of
+`references/skill-seed-template.md` says how.
 
-```markdown
-# Pattern Report — [Project Name]
-**Domain:** [domain]
-**Date:** [date]
-**Extracted by:** Mimir's Well
+## Synthesis across projects
 
-## Core Patterns
-For each pattern:
-### [Pattern Name]
-- **What it is:** [clear description]
-- **Why it works:** [the underlying principle]
-- **Example:** [concrete instance from this project]
-- **Transferability:** [what types of projects or contexts this applies to]
-- **Watch out for:** [conditions where it breaks or needs adaptation]
+Start from the Well's table of contents — titles and paths, not contents:
+`node "${CLAUDE_PLUGIN_ROOT}/scripts/well.cjs" index --root "${user_config.well_dir}"`.
+Read only the reports and seeds that bear on the question; reports the user pastes count too.
+Then: what appears in several projects (strongest candidates), what appears in one only
+(promising but unconfirmed), and what contradicts (open questions — don't resolve them
+prematurely). Write a Synthesis Report in the Pattern Report format, adding to each pattern a
+**Confidence**: confirmed across projects / single-project / contradicted.
 
-## Key Decisions
-[The most important choices made and the reasoning behind them]
+## Saturation
 
-## Hard-Won Solutions
-[Problems that resisted — and how they were finally solved]
+**Measure, don't guess.** Claude cannot perceive how full its own context is. For the
+technical side, use the best source available:
 
-## Surprising Insights
-[What exceeded or defied expectations — and what that reveals]
+1. **A measurement in context.** With the plugin installed, a hook injects a `🟡 MIMIR'S WELL`
+   or `🔴 MIMIR'S WELL` block when a level is crossed. Act as it says and quote its numbers.
+   If it says the window size was assumed, say that first: the percentage may be too high.
+2. **The report, on demand** ("are we saturated?", "how much context?"):
+   `node "${CLAUDE_PLUGIN_ROOT}/scripts/report.cjs"` — answer from its output.
+3. **No measurement** (the path reads literally `${...}`, or the command fails): say so and point
+   to the interface's own indicator (`/context` in the Claude Code CLI). Never invent a count.
 
-## What to Carry Forward
-[A short list: if you start a similar project tomorrow, bring these]
-```
+🟡 means each turn now costs several times the first: ask whether the next unit of work depends
+on what accumulated here — if not, a fresh session is cheaper. 🔴 means the window is filling and
+compaction is near: don't start new work, propose handing off while the package still fits.
 
-#### 4b — Skill Seed
-A compact block of content ready to be incorporated into a SKILL.md.
-Focus only on what is universal — strip all domain-specific details.
-Use the template in `references/skill-seed-template.md`.
+The cognitive side is always yours to watch: 4+ topics, re-explaining earlier threads, the user
+repeating context, a major new topic about to begin. Without the hook, re-evaluate silently every
+~10 exchanges and at topic shifts.
 
----
+Signal at a natural pause, with the type and the evidence, and let the user decide — never hand
+off on your own:
 
-## Mode 2: Sentinel Signals
+> 🌊 *Mimir's Well: this session may be approaching saturation [technical / cognitive / both] — [measured numbers or behavioral evidence]. Want a Handoff Package to continue cleanly in a new session?*
 
-When operating in Sentinel mode during a normal conversation, watch for:
+If yes: write the Handoff Package (`references/handoff.md`) and save it to `handoffs/`.
 
-- A solution that is notably elegant or non-obvious
-- A decision that reveals a deeper principle
-- A pattern that has appeared more than once in the conversation
-- A lesson learned the hard way
-- An approach that could transfer cleanly to other contexts
+**Resuming.** When the session-start context says a Handoff Package is waiting, tell the user in
+one line. Only if they accept: read it, continue from it, and rename it to end in `.loaded.md`.
 
-When detected, surface a brief, non-intrusive signal — never mid-thought, always at a
-natural pause:
+## References
 
-> "⚗️ *Mimir's Well noticed something worth capturing: [one-line description of what was detected]. Want to log this?*"
-
-If the user says yes: extract a micro-pattern (3–5 lines: what, why, transferability) and
-append it to the project's `well-log.md` (format in `references/sentinel-log.md`).
-If no: continue normally, no friction.
-
-At the end of a session where patterns were logged, offer to compile them into a
-Pattern Report or Skill Seed.
-
-**Sentinel discipline:** signal sparingly. One strong signal beats three weak ones.
-The user's trust depends on the Well knowing what's truly worth capturing.
-
----
-
-## Cross-Project Synthesis
-
-The Well already holds every project's reports. Start from its table of contents, which lists
-titles and paths, not contents:
-
-```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/well.cjs" index --root "${user_config.well_dir}"
-```
-
-Read only the reports and seeds that bear on the question; reading everything costs context
-the synthesis needs. Reports the user pastes count too. Then:
-
-1. Identify what appears in both — these are the strongest candidates for universal patterns
-2. Identify what appears in one but not the other — flag as "promising but unconfirmed"
-3. Identify contradictions — cases where projects suggest opposite approaches — and surface
-   them as open questions rather than resolving them prematurely
-4. Produce a Synthesis Report using the same Pattern Report format, but with an added field
-   per pattern: **Confidence** (confirmed across projects / single-project / contradicted)
-
----
-
-## Principles for Good Extraction
-
-**Separate the specific from the transferable.** A solution to a particular bug is not a
-pattern. The approach that found it might be.
-
-**Principles travel further than recipes.** "Always separate configuration from logic"
-travels. "Use config.yaml for credentials" doesn't.
-
-**Negative knowledge is as valuable as positive.** What failed, what was abandoned, what
-nearly worked — these are worth capturing too.
-
-**Confirm before crystallizing.** A pattern that the user doesn't recognize isn't a pattern —
-it's Claude's projection. Always reflect and confirm before including in the final output.
-
-**Partial extractions are valid.** Not every session needs to produce a complete report.
-A Continuity Anchor + partial patterns from one session is better than forcing closure
-prematurely.
-
----
-
-## Mode 3: Saturation Monitor
-
-Read `references/handoff.md` for the Handoff Package template, and
-`references/context-economics.md` for why the signal has two levels.
-
-### Measure, don't guess
-
-Claude cannot perceive how full its own context is. "Responses getting shorter" is a weak
-proxy that shows up late, if at all. So, for **technical** saturation, use the best source
-available, in this order:
-
-1. **A measurement already in context.** When the Mimir's Well plugin is installed in Claude
-   Code, a hook measures every turn and injects a `🟡 MIMIR'S WELL` or `🔴 MIMIR'S WELL`
-   block when a level is crossed. Act on it as that block says. Quote the numbers from it;
-   never round them from memory.
-2. **The report, on demand.** When the user asks "are we saturated?" or "how much context
-   are we using?" and the plugin is installed, run:
-
-   ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/report.cjs"
-   ```
-
-   and answer from its output. If that path still reads literally `${CLAUDE_PLUGIN_ROOT}`,
-   or the command fails, the plugin isn't available here: go to step 3.
-3. **Ask, don't estimate.** Without a measurement, say so plainly and point the user to the
-   interface's own context indicator (in the Claude Code CLI, `/context`). Do not invent a
-   token count.
-
-### The two levels (when measured)
-
-- 🟡 **Level 1 — cost (the plan).** The current turn re-sends several times the context of
-  the first turn (default 4×). The window may still be roomy; what grew is the cost of every
-  further turn. Ask the one question that matters: *does the next unit of work depend on what
-  has accumulated here?* If not, it is cheaper in a fresh session — offer a Handoff Package.
-  If it does, continue: paying for the context is cheaper than rediscovering it.
-- 🔴 **Level 2 — the window.** The context reached a large share of the window (default 70%).
-  Automatic compaction is getting close. Don't start a new unit of work; propose handing off
-  now, while there is room to write the package.
-
-Never close or hand off on your own: state the signal in one line and let the user decide.
-
-### Cognitive saturation (always behavioral)
-
-Independent of tokens, watch for:
-- The conversation has covered 4+ distinct topics or workstreams
-- Returning to an earlier topic requires significant re-explanation
-- The user is repeating context that was already established
-- A new major topic is about to begin that deserves a clean context
-
-### Periodic re-evaluation
-
-Without the hook, nobody else is watching: re-evaluate silently every ~10 exchanges and at
-every major topic shift, without waiting for an external trigger. With the hook installed,
-the technical side is automatic; keep re-evaluating the cognitive side.
-
-### Signal format
-
-Surface at a natural pause, never mid-thought, and always name the type and the evidence:
-
-> "🌊 *Mimir's Well: this session may be approaching saturation [technical / cognitive / both] — [the measured numbers, or the behavioral evidence]. Want a Handoff Package to migrate cleanly to a new chat?*"
-
-If yes: generate the full Handoff Package (see `references/handoff.md`) and save it to
-`handoffs/`: the next session in this project will offer to resume from it.
-If no: continue normally, and re-evaluate in 10–15 exchanges or when the next level is crossed.
-
-### Resuming
-
-When the session-start context says a Handoff Package is waiting, tell the user in one line and
-offer it. Only if they accept: read it, continue from it, and rename the file to end in
-`.loaded.md` so it isn't offered again.
-
----
-
-## Reference Files
-
-- `references/report-template.md` — Full Pattern Report template with examples
-- `references/skill-seed-template.md` — Skill Seed template with worked example
-- `references/sentinel-log.md` — Format for the running Well Log in Sentinel mode
-- `references/handoff.md` — Saturation criteria and Handoff Package template (Mode 3)
-- `references/context-economics.md` — Why a long session costs quadratically, and why one threshold can't answer both questions
+- `references/extraction.md` — the Extraction dialogue, phase by phase, and its principles
+- `references/report-template.md` — Pattern Report template with examples
+- `references/skill-seed-template.md` — Skill Seed template, and how to grow a seed into a skill
+- `references/sentinel-log.md` — Well Log entry format and signal discipline
+- `references/handoff.md` — saturation criteria and the Handoff Package template
+- `references/context-economics.md` — why a long session costs quadratically, and why one threshold can't answer both questions

@@ -111,3 +111,28 @@ the user mentions fragile bots, broken selectors, or retry logic.
 ### Open Questions
 - Does the Locator Chain pattern apply to desktop automation (not just web)?
 - Is there a pattern for handling partial state — when a multi-step process fails halfway through?
+
+---
+
+## From Seed to Skill
+
+A seed is worth growing into a skill when its patterns held in more than one project, or when
+the user expects to face the same kind of work again. Offer it once, at the end; don't push.
+
+If the user says yes:
+
+1. **If the `skill-creator` skill is available, hand the seed to it.** It drafts, tests and
+   tunes the description so the skill triggers when it should — the hardest part to get right.
+2. **Otherwise, write the skill directly.** Confirm the name (kebab-case) and where it goes:
+   - Claude Code, for every project: `~/.claude/skills/<name>/SKILL.md`
+   - Claude Code, for this project only: `.claude/skills/<name>/SKILL.md` in the repo
+   - claude.ai: show the folder's contents for the user to zip and upload as a custom skill
+
+   Build it from the seed:
+   - frontmatter `name` from **Suggested Skill → Name**, `description` from **Trigger
+     contexts**: what the skill does and the concrete situations that should trigger it;
+   - body: the **Principles** first (they survive context changes), then the **Patterns**,
+     then the **Pitfalls** as "when not to apply this";
+   - leave **Open Questions** out of the skill: they stay in the seed, as the agenda for the
+     next extraction.
+3. Note in the seed file that it became a skill, and where, so a later synthesis knows.

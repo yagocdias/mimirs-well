@@ -1,7 +1,7 @@
 # Optional: project instructions for claude.ai
 
-**Claude Code doesn't need this.** There, the plugin's hook watches every turn and tells Claude
-when to act, so nothing has to be kept "on" by instructions.
+**Claude Code doesn't need this.** There, the plugin's hooks keep the Sentinel on from the start
+of every session and measure every turn, so nothing has to be kept "on" by instructions.
 
 **claude.ai has no hooks.** A skill loads only when a request looks relevant to it, so the passive
 modes (Sentinel, periodic saturation checks) can go quiet in a long conversation. If you want
@@ -20,6 +20,7 @@ When detected, surface a brief signal at a natural pause:
 
 Do not interrupt mid-thought. Signal sparingly — one strong signal beats three weak ones.
 At the end of each session, offer to compile logged patterns into a Pattern Report.
+Write signals and artifacts in the language of the conversation.
 
 Saturation Monitor also active. There is no token meter here: do not invent token
 counts. If the user asks how full the context is, say there is no measurement and

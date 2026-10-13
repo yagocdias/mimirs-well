@@ -9,6 +9,14 @@
 - **A `SessionStart` hook** keeps the Sentinel on in every session, points Claude at the
   project's Well, and offers a Handoff Package from the last 48 hours — no pasting. On a resume
   after the prompt cache expired, it says what the next turn will re-write.
+- **A leaner skill.** SKILL.md is now a router (about half the size); the Extraction dialogue
+  moved to `references/extraction.md`. The description names its triggers instead of
+  "bias toward triggering", and says what it is not for.
+- **In the user's language.** Signals and artifacts follow the conversation's language.
+- **Patterns that act.** A confirmed pattern that is a rule for the project can also go to
+  Claude Code's memory or the project's `CLAUDE.md` (asking first), so the next session uses it.
+- **Seeds grow into skills**, through `skill-creator` when available or written directly to
+  `~/.claude/skills/<name>/`.
 - **The hook reads only what's new.** It keeps how far it read and the running totals in its
   state file, instead of re-reading the whole transcript before every prompt.
 - **The window comes from the model.** Fable, Sonnet 5+, Haiku 5.5+ and Opus 4.7+ are read as 1M,
