@@ -50,6 +50,8 @@ Precisa do **Node.js 18+** no `PATH` (o hook é um script Node).
 /plugin install mimirs-well@mimirs-well
 ```
 
+Ou pelo terminal: `claude plugin marketplace add yagocdias/mimirs-well` e depois `claude plugin install mimirs-well@mimirs-well`.
+
 Reinicie o Claude Code depois de instalar: os hooks são carregados na abertura.
 
 ### claude.ai (só a skill)
@@ -77,7 +79,7 @@ Claude Code. Como plugin não pode instalar statusline, este passo é manual:
 
 ## Configuração
 
-Em `/config`, com o plugin ativo (ou como variáveis de ambiente `MIMIR_*`):
+Os padrões já funcionam. Para mudar: `/plugin configure mimirs-well@mimirs-well` (ou `--config CHAVE=VALOR` na instalação, ou variáveis de ambiente `MIMIR_*`):
 
 | Opção | Padrão | Significado |
 |---|---|---|

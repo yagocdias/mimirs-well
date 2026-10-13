@@ -53,6 +53,8 @@ Requires **Node.js 18+** on your `PATH` (the hook is a Node script).
 /plugin install mimirs-well@mimirs-well
 ```
 
+Or from a terminal: `claude plugin marketplace add yagocdias/mimirs-well` then `claude plugin install mimirs-well@mimirs-well`.
+
 Restart Claude Code after installing: hooks are loaded at startup.
 
 ### claude.ai (skill only)
@@ -82,7 +84,7 @@ The dollar figure is Claude Code's own list-price estimate, not a bill.
 
 ## Configuration
 
-Set in `/config` when the plugin is enabled (or as `MIMIR_*` environment variables):
+Defaults work out of the box. To change them: `/plugin configure mimirs-well@mimirs-well` (or `--config KEY=VALUE` at install, or `MIMIR_*` environment variables):
 
 | Option | Default | Meaning |
 |---|---|---|
