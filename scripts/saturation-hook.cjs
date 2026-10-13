@@ -31,6 +31,16 @@ function readStdin() {
   }
 }
 
+// When the window is a guess, a percentage of it is too. Say so, so Claude
+// doesn't push a handoff on a session that may have plenty of room.
+const WINDOW_CAVEAT = (m) =>
+  m.windowSource !== "assumed"
+    ? `Window: ${meter.windowLabel(m.window)} (${meter.windowNote(m)}).`
+    : `⚠️ The window size was NOT detected: ${meter.windowLabel(m.window)} is an assumption
+(${meter.windowNote(m)}). If the user's window is larger, every percentage here is
+too high. Say this first, in one line, and point them to the plugin's
+context_window option.`;
+
 const YELLOW = (m) =>
   `
 🟡 MIMIR'S WELL — saturation level 1 (cost per turn), measured now
@@ -40,6 +50,8 @@ so this turn costs ~${m.factor.toFixed(1)}x what a turn cost at the start of thi
 session. This is NOT a window warning (${m.pct}% of the window is used); it is a
 cost warning: the cumulative cost of a session grows roughly with the square of
 its length.
+
+${WINDOW_CAVEAT(m)}
 
 What to do: if the next unit of work does NOT depend on what has accumulated
 here, it is cheaper in a fresh session — offer a Handoff Package (mimirs-well
@@ -53,9 +65,11 @@ const RED = (m) =>
   `
 🔴 MIMIR'S WELL — saturation level 2 (the window), measured now
 
-Context is at ${meter.k(m.context)} tokens, ${m.pct}% of a ${meter.k(m.window)} window.
+Context is at ${meter.k(m.context)} tokens, ${m.pct}% of a ${meter.windowLabel(m.window)} window.
 Automatic compaction is getting close, and compaction summarizes away detail the
 user may still need.
+
+${WINDOW_CAVEAT(m)}
 
 What to do: do not start a new unit of work. Propose to the user to hand off now
 and, if they agree, generate the Handoff Package (mimirs-well skill,

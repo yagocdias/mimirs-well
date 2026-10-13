@@ -78,6 +78,7 @@ function main() {
     "source .................. " + where.how,
     "",
     "context now ............. " + n(m.context) + " tokens (" + m.pct + "% of " + n(m.window) + ")",
+    "window size from ........ " + meter.windowNote(m),
     "context at first turn ... " + n(m.opening),
     "cost of this turn ....... ~" + m.factor.toFixed(1) + "x the first turn",
     "API requests ............ " + m.requests,

@@ -137,18 +137,67 @@ function contextOf(r) {
 }
 
 /**
- * The window size, best source first:
- *   1. what the user configured;
- *   2. what the status line saw (Claude Code hands it the real size);
- *   3. inference: a context above the standard window is only possible in an
- *      extended one;
- *   4. the standard window.
+ * The window a model runs with in Claude Code, read from its id, or 0 when the
+ * id alone doesn't settle it. Per Claude Code's model docs: Fable, Sonnet 5+,
+ * Haiku 5.5+ and Opus 4.7+ run with 1M by default. Older models run with 200k,
+ * or with 1M through a "[1m]" variant the API model id doesn't show — so for
+ * them the id can't decide, and the caller falls back to other evidence.
  */
-function resolveWindow({ configured, fromStatusLine, maxContextSeen }) {
-  if (configured > 0) return configured;
-  if (fromStatusLine > 0) return fromStatusLine;
-  if (maxContextSeen > WINDOW_STANDARD) return WINDOW_EXTENDED;
-  return WINDOW_STANDARD;
+function windowOfModel(model) {
+  const id = String(model || "").toLowerCase();
+  if (id.includes("[1m]")) return WINDOW_EXTENDED;
+  // claude-opus-4-7, claude-haiku-4-5-20251001, anthropic.claude-opus-4-7-v1:0,
+  // claude-opus-4-7@20250101; a date right after the major is not a minor.
+  const m = /claude-(fable|opus|sonnet|haiku)-(\d+)(?:-(\d{1,2})(?=$|[-@:]))?/.exec(id);
+  if (!m) return 0;
+  const version = Number(m[2]) + Number(m[3] || 0) / 10;
+  const native1M = { fable: 0, sonnet: 5, haiku: 5.5, opus: 4.7 }[m[1]];
+  return version >= native1M ? WINDOW_EXTENDED : 0;
+}
+
+/**
+ * The window size and where it came from, best source first:
+ *   configured   the user's plugin setting: final, nothing overrides it;
+ *   status line  Claude Code hands the status line the real size;
+ *   1M disabled  CLAUDE_CODE_DISABLE_1M_CONTEXT keeps every model at 200k;
+ *   model        the model id (windowOfModel);
+ *   max tokens   CLAUDE_CODE_MAX_CONTEXT_TOKENS, for ids Claude Code doesn't know;
+ *   inferred     a context above 200k is only possible in a 1M window;
+ *   assumed      200k, a guess — and the meter says so instead of hiding it.
+ * Then CLAUDE_CODE_AUTO_COMPACT_WINDOW caps it: compaction, the thing red
+ * warns about, happens there and not at the model's limit.
+ */
+function windowOf({ configured, fromStatusLine, model, maxContextSeen, env = {} }) {
+  if (configured > 0) return { window: configured, source: "configured" };
+  let window, source;
+  const byModel = windowOfModel(model);
+  if (fromStatusLine > 0) [window, source] = [fromStatusLine, "status line"];
+  else if (env.disable1M) [window, source] = [WINDOW_STANDARD, "1M disabled"];
+  else if (byModel) [window, source] = [byModel, "model"];
+  else if (env.maxContextTokens > 0) [window, source] = [env.maxContextTokens, "max tokens"];
+  else if (maxContextSeen > WINDOW_STANDARD) [window, source] = [WINDOW_EXTENDED, "inferred"];
+  else [window, source] = [WINDOW_STANDARD, "assumed"];
+  if (env.autoCompactWindow > 0 && env.autoCompactWindow < window)
+    [window, source] = [env.autoCompactWindow, "auto-compact"];
+  return { window, source };
+}
+
+function resolveWindow(args) {
+  return windowOf(args).window;
+}
+
+/** Where the window size came from, in words, for the report and the warnings. */
+function windowNote(m) {
+  return {
+    configured: "set in the plugin options",
+    "status line": "reported by Claude Code to the status line",
+    "1M disabled": "CLAUDE_CODE_DISABLE_1M_CONTEXT is set",
+    model: "the window of " + m.model,
+    "max tokens": "CLAUDE_CODE_MAX_CONTEXT_TOKENS",
+    "auto-compact": "CLAUDE_CODE_AUTO_COMPACT_WINDOW (compaction happens there)",
+    inferred: "inferred: the context passed 200k",
+    assumed: "ASSUMED, not detected" + (m.model ? " (" + m.model + " doesn't settle it)" : ""),
+  }[m.windowSource];
 }
 
 /** 0 = green, 1 = yellow (plan), 2 = red (window). */
@@ -177,6 +226,7 @@ function tally(prev, reqs) {
     if (!t.requests) t.opening = c;
     t.requests++;
     t.context = c;
+    t.model = r.model || t.model; // the latest: /model can switch mid-session
     t.maxContext = Math.max(t.maxContext, c);
     t.sentTotal += c;
     t.cacheReadTotal += r.cacheRead;
@@ -194,10 +244,12 @@ function measureTally(t, opts = {}) {
   if (!t || !t.requests) return null;
   const context = t.context;
   const opening = t.opening || context;
-  const window = resolveWindow({
+  const { window, source } = windowOf({
     configured: opts.configuredWindow || 0,
     fromStatusLine: opts.windowFromStatusLine || 0,
+    model: t.model,
     maxContextSeen: t.maxContext,
+    env: opts.env,
   });
   const level = levelOf({
     context,
@@ -211,7 +263,9 @@ function measureTally(t, opts = {}) {
     context,
     opening,
     factor: context / opening,
+    model: t.model,
     window,
+    windowSource: source,
     pct: Math.round((100 * context) / window),
     level,
     light: lightOf(level),
@@ -233,7 +287,8 @@ function windowLabel(w) {
 /** One-line meter, shared by the hook and the report. */
 function meterLine(m) {
   return (
-    `${m.light} context ${k(m.context)} (${m.pct}% of ${windowLabel(m.window)}) · ` +
+    `${m.light} context ${k(m.context)} (${m.pct}% of ${windowLabel(m.window)}` +
+    `${m.windowSource === "assumed" ? ", assumed" : ""}) · ` +
     `turn ~${m.factor.toFixed(1)}x the first · ${m.requests} req`
   );
 }
@@ -261,6 +316,12 @@ function options() {
     costFactor: numberOption("cost_factor", DEFAULTS.costFactor),
     redPct: numberOption("red_pct", DEFAULTS.redPct),
     echoInReply: boolOption("echo_in_reply", false),
+    // Claude Code's own settings that change the window; hooks inherit its env.
+    env: {
+      disable1M: /^(1|true|yes|on)$/i.test(process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT || ""),
+      maxContextTokens: Number(process.env.CLAUDE_CODE_MAX_CONTEXT_TOKENS) || 0,
+      autoCompactWindow: Number(process.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW) || 0,
+    },
   };
 }
 
@@ -341,6 +402,9 @@ module.exports = {
   readRequests,
   readNewRequests,
   contextOf,
+  windowOfModel,
+  windowOf,
+  windowNote,
   resolveWindow,
   levelOf,
   lightOf,
@@ -348,6 +412,7 @@ module.exports = {
   measure,
   measureTally,
   meterLine,
+  windowLabel,
   k,
   options,
   STATE_DIR,

@@ -90,7 +90,7 @@ Defaults work out of the box. To change them: `/plugin configure mimirs-well@mim
 
 | Option | Default | Meaning |
 |---|---|---|
-| `context_window` | `0` (auto) | Window size. Auto = the real size reported to the status line, else inferred (a context over 200k implies a 1M window), else 200k |
+| `context_window` | `0` (auto) | Window size. Auto = the real size reported to the status line; else the model's window (Fable, Sonnet 5+, Haiku 5.5+, Opus 4.7+ run with 1M), honoring `CLAUDE_CODE_DISABLE_1M_CONTEXT`, `CLAUDE_CODE_MAX_CONTEXT_TOKENS` and `CLAUDE_CODE_AUTO_COMPACT_WINDOW`; else inferred (a context over 200k implies 1M); else 200k, shown as **assumed** |
 | `cost_factor` | `4` | 🟡 when a turn re-sends this many times the first turn's context |
 | `red_pct` | `70` | 🔴 at this % of the window |
 | `echo_in_reply` | `false` | Ask Claude to end each reply with the meter line — for surfaces that hide hook messages. Adds a line to every reply |
@@ -107,8 +107,9 @@ Defaults work out of the box. To change them: `/plugin configure mimirs-well@mim
 - **The transcript format is internal to Claude Code**, not a documented API. If a release
   changes it, the meter goes quiet (it fails silently by design) until the parser is updated.
   The status line uses documented fields and is not affected.
-- **The hook can't see the window size**; it detects it (see `context_window`). Configure it if
-  detection is wrong for your setup.
+- **The hook can't see the window size**; it works it out from the model (see `context_window`).
+  For Opus 4.6 and Sonnet 4.6 the model id can't tell 200k from their `[1m]` variant: the meter
+  then says the window is *assumed*. Set `context_window`, or install the status line, to fix it.
 - **`report.cjs` run by hand, outside Claude Code,** can't know which session you mean: it reports
   the one that last sent a prompt in that folder. Pass a transcript path to choose. (When Claude
   runs it, it measures its own session.)

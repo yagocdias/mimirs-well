@@ -85,7 +85,7 @@ Os padrões já funcionam. Para mudar: `/plugin configure mimirs-well@mimirs-wel
 
 | Opção | Padrão | Significado |
 |---|---|---|
-| `context_window` | `0` (auto) | Tamanho da janela. Auto = o tamanho real informado à statusline; senão, deduzido (contexto acima de 200k implica janela de 1M); senão, 200k |
+| `context_window` | `0` (auto) | Tamanho da janela. Auto = o tamanho real informado à statusline; senão, a janela do modelo (Fable, Sonnet 5+, Haiku 5.5+ e Opus 4.7+ rodam com 1M), respeitando `CLAUDE_CODE_DISABLE_1M_CONTEXT`, `CLAUDE_CODE_MAX_CONTEXT_TOKENS` e `CLAUDE_CODE_AUTO_COMPACT_WINDOW`; senão, deduzido (contexto acima de 200k implica 1M); senão, 200k, marcado como **assumed** |
 | `cost_factor` | `4` | 🟡 quando o turno reenvia esse múltiplo do contexto do primeiro |
 | `red_pct` | `70` | 🔴 nessa % da janela |
 | `echo_in_reply` | `false` | Pede ao Claude que termine cada resposta com a linha do medidor, para interfaces que escondem as mensagens dos hooks |
@@ -102,7 +102,9 @@ Os padrões já funcionam. Para mudar: `/plugin configure mimirs-well@mimirs-wel
 - **O formato do transcript é interno do Claude Code**, não uma API documentada. Se uma versão
   mudá-lo, o medidor se cala (falha em silêncio, de propósito) até o leitor ser atualizado. A
   statusline usa campos documentados e não é afetada.
-- **O hook não enxerga o tamanho da janela**: ele deduz (veja `context_window`).
+- **O hook não enxerga o tamanho da janela**: ele a deduz pelo modelo (veja `context_window`). No
+  Opus 4.6 e no Sonnet 4.6 o ID do modelo não distingue 200k da variante `[1m]`: aí o medidor avisa
+  que a janela é *assumida*. Configure `context_window`, ou instale a statusline, para resolver.
 - **O `report.cjs` rodado à mão, fora do Claude Code,** não sabe de qual sessão você fala: mede a
   que mandou o último prompt naquela pasta. Passe o caminho de um transcript para escolher. (Quando
   o Claude o roda, ele mede a própria sessão.)

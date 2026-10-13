@@ -21,13 +21,13 @@ function sandbox() {
 }
 
 // A transcript line shaped like Claude Code's (only the fields the meter reads).
-function req(id, context, { output = 500, sidechain = false } = {}) {
+function req(id, context, { output = 500, sidechain = false, model = "claude-test" } = {}) {
   return JSON.stringify({
     type: "assistant",
     isSidechain: sidechain,
     requestId: "req_" + id,
     message: {
-      model: "claude-test",
+      model,
       usage: {
         input_tokens: 10,
         cache_creation_input_tokens: 1000,
@@ -38,10 +38,10 @@ function req(id, context, { output = 500, sidechain = false } = {}) {
   });
 }
 
-function writeTranscript(dir, contexts) {
+function writeTranscript(dir, contexts, model) {
   const file = path.join(dir, "t.jsonl");
   const lines = [JSON.stringify({ type: "user", message: { content: "hi" } })];
-  contexts.forEach((c, i) => lines.push(req(i, c)));
+  contexts.forEach((c, i) => lines.push(req(i, c, { model })));
   fs.writeFileSync(file, lines.join("\n") + "\n");
   return file;
 }
@@ -119,6 +119,64 @@ test("window: config > status line > inference from a context above 200k > 200k"
   assert.equal(meter.resolveWindow({ configured: 0, fromStatusLine: 0, maxContextSeen: 150_000 }), 200_000);
 });
 
+test("window from the model id: native 1M models; older ones can't be told from the id", () => {
+  const cases = {
+    "claude-opus-5-5": 1_000_000,
+    "claude-fable-5-1": 1_000_000,
+    "claude-sonnet-5": 1_000_000,
+    "claude-haiku-5-5": 1_000_000,
+    "claude-opus-4-7": 1_000_000,
+    "anthropic.claude-opus-4-7-v1:0": 1_000_000,
+    "claude-opus-4-7@20250101": 1_000_000,
+    "claude-opus-4-6": 0, // 200k or [1m]: the id doesn't say
+    "claude-sonnet-4-6": 0,
+    "claude-sonnet-4-20250514": 0, // a date, not minor version 20
+    "claude-haiku-4-5-20251001": 0,
+    "claude-3-5-sonnet-20241022": 0,
+    "claude-opus-4-6[1m]": 1_000_000,
+    "": 0,
+  };
+  for (const [id, w] of Object.entries(cases)) assert.equal(meter.windowOfModel(id), w, id);
+});
+
+test("window sources: config > status line > 1M disabled > model > max tokens > inferred > assumed; auto-compact caps", () => {
+  const src = (a) => meter.windowOf(a);
+  const opus = "claude-opus-5-5";
+  assert.deepEqual(src({ configured: 300_000, fromStatusLine: 1_000_000, model: opus }), { window: 300_000, source: "configured" });
+  assert.deepEqual(src({ fromStatusLine: 200_000, model: opus }), { window: 200_000, source: "status line" });
+  assert.deepEqual(src({ model: opus, env: { disable1M: true } }), { window: 200_000, source: "1M disabled" });
+  assert.deepEqual(src({ model: opus }), { window: 1_000_000, source: "model" });
+  assert.deepEqual(src({ model: "my-gateway-model", env: { maxContextTokens: 400_000 } }), { window: 400_000, source: "max tokens" });
+  assert.deepEqual(src({ model: "claude-opus-4-6", maxContextSeen: 250_000 }), { window: 1_000_000, source: "inferred" });
+  assert.deepEqual(src({ model: "claude-opus-4-6" }), { window: 200_000, source: "assumed" });
+  assert.deepEqual(src({ model: opus, env: { autoCompactWindow: 500_000 } }), { window: 500_000, source: "auto-compact" });
+  assert.deepEqual(src({ configured: 800_000, env: { autoCompactWindow: 500_000 } }), { window: 800_000, source: "configured" });
+});
+
+test("hook: Opus 5.5 at 141k is green on its 1M window (the false red of 2026-10-13)", () => {
+  const sb = sandbox();
+  const out = runHook(sb, {
+    session_id: "opus55",
+    transcript_path: writeTranscript(sb.dir, [70_000, 141_000], "claude-opus-5-5"),
+    cwd: sb.dir,
+  });
+  assert.match(out.systemMessage, /🟢 context 141k \(14% of 1M\)/);
+  assert.equal(out.hookSpecificOutput.additionalContext, undefined);
+});
+
+test("hook: a warning on an assumed window says it is assumed", () => {
+  const sb = sandbox();
+  const out = runHook(sb, {
+    session_id: "assumed",
+    transcript_path: writeTranscript(sb.dir, [70_000, 141_000], "claude-opus-4-6"),
+    cwd: sb.dir,
+  });
+  assert.match(out.systemMessage, /71% of 200k, assumed/);
+  assert.match(out.hookSpecificOutput.additionalContext, /saturation level 2/);
+  assert.match(out.hookSpecificOutput.additionalContext, /window size was NOT detected/);
+  assert.match(out.hookSpecificOutput.additionalContext, /claude-opus-4-6 doesn't settle it/);
+});
+
 test("levels on a 200k window: the old absolute 300k/700k could never fire here", () => {
   const base = { opening: 20_000, window: 200_000 };
   assert.equal(meter.levelOf({ ...base, context: 60_000 }), 0); // 3x
@@ -154,7 +212,7 @@ test("hook: green says nothing to Claude; crossing yellow warns ONCE; red warns;
     runHook(sb, { session_id: sid, transcript_path: writeTranscript(sb.dir, contexts), cwd: sb.dir });
 
   const green = ask([20_000, 40_000]);
-  assert.match(green.systemMessage, /🟢 context 40k \(20% of 200k\)/);
+  assert.match(green.systemMessage, /🟢 context 40k \(20% of 200k, assumed\)/);
   assert.equal(green.hookSpecificOutput.additionalContext, undefined);
 
   const yellow = ask([20_000, 40_000, 85_000]);
@@ -211,6 +269,7 @@ test("report finds the session the hook saw in this folder", () => {
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /context now \.+ 145,000 tokens \(73% of 200,000\)/);
   assert.match(r.stdout, /🔴 2/);
+  assert.match(r.stdout, /window size from \.+ ASSUMED, not detected/);
 });
 
 test("status line: uses the harness numbers and records the window for the hook", () => {

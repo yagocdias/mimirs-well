@@ -4,6 +4,11 @@
 
 - **The hook reads only what's new.** It keeps how far it read and the running totals in its
   state file, instead of re-reading the whole transcript before every prompt.
+- **The window comes from the model.** Fable, Sonnet 5+, Haiku 5.5+ and Opus 4.7+ are read as 1M,
+  honoring `CLAUDE_CODE_DISABLE_1M_CONTEXT`, `CLAUDE_CODE_MAX_CONTEXT_TOKENS` and
+  `CLAUDE_CODE_AUTO_COMPACT_WINDOW`. Before, an Opus 5.5 session at 141k got a 🔴 "70% of 200k".
+- **A guessed window says so:** the meter line shows `assumed`, the 🟡/🔴 warnings tell Claude to
+  say it first, and the report names where the window size came from.
 - **Subagent turns are ignored** (`isSidechain`), so they can never pass for this session's context.
 - **`report.cjs` measures the session that runs it** (`CLAUDE_CODE_SESSION_ID`), even with two
   sessions in the same folder.
