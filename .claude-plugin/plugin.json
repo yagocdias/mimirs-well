@@ -1,7 +1,7 @@
 {
   "name": "mimirs-well",
   "displayName": "Mimir's Well",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Meta-learning skill that captures reusable patterns, plus a measured session-saturation signal (real token counts, not guesses) and a Handoff Package for clean migration to a new session.",
   "author": {
     "name": "yagocdias"

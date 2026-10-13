@@ -65,10 +65,10 @@ Open an issue at https://github.com/yagocdias/mimirs-well/issues with:
 - the output of the report, run from the project folder:
 
   ```
-  node ~/.claude/plugins/cache/mimirs-well/mimirs-well/2.0.0/scripts/report.cjs
+  node ~/.claude/plugins/cache/mimirs-well/mimirs-well/2.1.0/scripts/report.cjs
   ```
 
-  (On Windows: `%USERPROFILE%\.claude\plugins\cache\mimirs-well\mimirs-well\2.0.0\scripts\report.cjs`.)
+  (On Windows: `%USERPROFILE%\.claude\plugins\cache\mimirs-well\mimirs-well\2.1.0\scripts\report.cjs`.)
 
 ⚠️ **Don't attach session transcripts** — they contain your conversation. The report only has numbers.
 

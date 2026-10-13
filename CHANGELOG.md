@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (2.1.0)
+## 2.1.0
 
 - **The Well keeps what it produces.** Pattern Reports, Skill Seeds, the Sentinel log, the
   Continuity Anchor and Handoff Packages are saved under one global folder (`~/.mimir`, option
