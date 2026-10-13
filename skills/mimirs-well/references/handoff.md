@@ -112,6 +112,10 @@ that is ending, and the new one measures itself from zero.
 The session opener should be complete enough that no additional explanation is needed.
 If the user pastes it in a new chat, that chat should be immediately productive.
 
+Where there is a file system, also save the whole package to the project's `handoffs/`
+folder (see "The Well on Disk" in SKILL.md). With the plugin installed, the next session in
+this project finds it and offers to resume from it, so pasting becomes optional.
+
 ---
 
 ### Block 3 — Captured Patterns (if any)

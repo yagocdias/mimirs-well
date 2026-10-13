@@ -32,12 +32,36 @@ Detalhes: [`context-economics.md`](skills/mimirs-well/references/context-economi
 | Peça | Onde roda | O que faz |
 |---|---|---|
 | `skills/mimirs-well/` | claude.ai **e** Claude Code | A skill: Extração, Sentinela, Monitor de Saturação, Pacote de Handoff |
+| `scripts/session-start.cjs` | Claude Code (plugin) | No início da sessão: mantém a Sentinela ligada, aponta o poço do projeto, oferece um Handoff Package recente |
+| `scripts/well.cjs` | Claude Code (plugin) | Onde o poço fica no disco; o índice que a skill lê para a síntese entre projetos |
 | `hooks/hooks.json` + `scripts/saturation-hook.cjs` | Claude Code (plugin) | Mede a cada turno e só fala com o Claude quando um nível é cruzado |
 | `scripts/report.cjs` | Claude Code (plugin) | A skill roda quando você pergunta "estamos saturados?" |
 | `scripts/statusline.cjs` | Claude Code (opcional, manual) | O medidor no rodapé do Claude Code |
 
 Sem o plugin (por exemplo, no claude.ai), a skill funciona do mesmo jeito. Ela só avisa que
 não tem medição e pede que você olhe o indicador de contexto da sua interface, em vez de chutar.
+
+## O poço no disco
+
+No Claude Code, tudo o que o poço produz é salvo num lugar só para todos os seus projetos, para
+sobreviver à sessão e permitir comparar projetos:
+
+```
+~/.mimir/projects/<projeto>/
+  reports/AAAA-MM-DD-<tema>.md     Pattern Reports e Synthesis Reports
+  seeds/<nome>.md                  Skill Seeds
+  well-log.md                      entradas da Sentinela que você aceitou
+  anchor.md                        a Continuity Anchor mais recente
+  handoffs/AAAA-MM-DD-HHMM.md      Handoff Packages
+```
+
+Um projeto é a raiz git da pasta em que você trabalha. Ao abrir uma sessão nova num projeto
+com um Handoff Package das últimas 48 horas, o Claude oferece retomar dele, sem colar nada.
+Depois de retomado, o arquivo vira `*.loaded.md` e não é oferecido de novo.
+
+A síntese entre projetos começa por um índice dos relatórios de todos os projetos e lê só os
+que importam. Mude o local com a opção `well_dir`. No claude.ai, que não tem sistema de
+arquivos, os artefatos ficam na conversa.
 
 ## Instalação
 
@@ -88,6 +112,7 @@ Os padrões já funcionam. Para mudar: `/plugin configure mimirs-well@mimirs-wel
 | `context_window` | `0` (auto) | Tamanho da janela. Auto = o tamanho real informado à statusline; senão, a janela do modelo (Fable, Sonnet 5+, Haiku 5.5+ e Opus 4.7+ rodam com 1M), respeitando `CLAUDE_CODE_DISABLE_1M_CONTEXT`, `CLAUDE_CODE_MAX_CONTEXT_TOKENS` e `CLAUDE_CODE_AUTO_COMPACT_WINDOW`; senão, deduzido (contexto acima de 200k implica 1M); senão, 200k, marcado como **assumed** |
 | `cost_factor` | `4` | 🟡 quando o turno reenvia esse múltiplo do contexto do primeiro |
 | `red_pct` | `70` | 🔴 nessa % da janela |
+| `well_dir` | `~/.mimir` | Onde o poço guarda relatórios, seeds, log e handoffs, uma pasta por projeto |
 | `echo_in_reply` | `false` | Pede ao Claude que termine cada resposta com a linha do medidor, para interfaces que escondem as mensagens dos hooks |
 
 ## Privacidade
@@ -95,6 +120,8 @@ Os padrões já funcionam. Para mudar: `/plugin configure mimirs-well@mimirs-wel
 - Lê o transcript **local** da sessão (o `.jsonl` que o Claude Code já grava) para contar tokens.
 - Grava arquivos pequenos de estado na pasta temporária do sistema, em `mimirs-well/`. Os que ficam
   7 dias sem uso são apagados.
+- Salva o que o poço produz (relatórios, seeds, log, handoffs) em `~/.mimir/`, ou no seu `well_dir`.
+  São as conclusões das suas conversas: não publique essa pasta.
 - Não envia nada para lugar nenhum. Sem chamadas de rede, sem dependências.
 
 ## Limites conhecidos

@@ -2,6 +2,13 @@
 
 ## Unreleased (2.1.0)
 
+- **The Well keeps what it produces.** Pattern Reports, Skill Seeds, the Sentinel log, the
+  Continuity Anchor and Handoff Packages are saved under one global folder (`~/.mimir`, option
+  `well_dir`), one subfolder per project, so synthesis can read across projects
+  (`well.cjs index`).
+- **A `SessionStart` hook** keeps the Sentinel on in every session, points Claude at the
+  project's Well, and offers a Handoff Package from the last 48 hours — no pasting. On a resume
+  after the prompt cache expired, it says what the next turn will re-write.
 - **The hook reads only what's new.** It keeps how far it read and the running totals in its
   state file, instead of re-reading the whole transcript before every prompt.
 - **The window comes from the model.** Fable, Sonnet 5+, Haiku 5.5+ and Opus 4.7+ are read as 1M,
@@ -14,7 +21,8 @@
   sessions in the same folder.
 - **Old state is cleaned up:** at most once a day, state files untouched for 7 days are deleted.
 - **Tests:** `hooks.json` is now run exactly as Claude Code spawns it; incremental reads,
-  subagent lines, session lookup and cleanup are covered.
+  subagent lines, session lookup, cleanup, the Well and the session-start hook are covered.
+  Run them all with `node --test`.
 
 ## 2.0.0
 

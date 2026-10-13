@@ -47,6 +47,42 @@ a Handoff Package for clean migration to a new session.
 
 ---
 
+## The Well on Disk
+
+Where there is a file system (Claude Code), the Well keeps what it produces in files, so it
+outlives the session and every project can be read side by side. On claude.ai, without one,
+show the artifacts in the reply as before.
+
+**One global Well, one folder per project.** The plugin's session-start hook puts this
+project's folder in context. If it isn't there, ask the plugin:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/well.cjs" --root "${user_config.well_dir}"
+```
+
+Before the first write in a project, create its folder (it prints the same paths):
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/well.cjs" ensure --root "${user_config.well_dir}"
+```
+
+If those paths still read literally `${...}`, the plugin isn't installed: use
+`~/.mimir/projects/<project folder name>/` and create it yourself.
+
+| Artifact | File, inside the project's folder | How |
+|---|---|---|
+| Pattern Report | `reports/YYYY-MM-DD-<topic>.md` | new file |
+| Synthesis Report | `reports/YYYY-MM-DD-synthesis-<topic>.md` | new file |
+| Skill Seed | `seeds/<name>.md` | new file |
+| Sentinel entry the user said yes to | `well-log.md` | append |
+| Continuity Anchor | `anchor.md` | overwrite: only the latest matters |
+| Handoff Package | `handoffs/YYYY-MM-DD-HHMM.md` | new file |
+
+Save each artifact when you produce it and say where in one line. Show it in the reply too when
+the user needs to read it now (a Handoff Package to paste, a report to review).
+
+---
+
 ## Mode 1: Extraction Process
 
 ### Phase 0 — Orient
@@ -108,7 +144,8 @@ Next step: [what to do when resuming]
 ```
 
 This solves the memory gap between sessions. Always generate this, even if the session
-felt complete — projects often have more to give.
+felt complete — projects often have more to give. Save it as `anchor.md` (see The Well on Disk);
+when resuming an extraction, read that file before asking anything.
 
 ### Phase 4 — Final Output
 Produce two artifacts:
@@ -168,7 +205,7 @@ natural pause:
 > "⚗️ *Mimir's Well noticed something worth capturing: [one-line description of what was detected]. Want to log this?*"
 
 If the user says yes: extract a micro-pattern (3–5 lines: what, why, transferability) and
-add it to a running Well Log for the session (format in `references/sentinel-log.md`).
+append it to the project's `well-log.md` (format in `references/sentinel-log.md`).
 If no: continue normally, no friction.
 
 At the end of a session where patterns were logged, offer to compile them into a
@@ -181,7 +218,15 @@ The user's trust depends on the Well knowing what's truly worth capturing.
 
 ## Cross-Project Synthesis
 
-When the user brings Pattern Reports or Skill Seeds from multiple projects:
+The Well already holds every project's reports. Start from its table of contents, which lists
+titles and paths, not contents:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/well.cjs" index --root "${user_config.well_dir}"
+```
+
+Read only the reports and seeds that bear on the question; reading everything costs context
+the synthesis needs. Reports the user pastes count too. Then:
 
 1. Identify what appears in both — these are the strongest candidates for universal patterns
 2. Identify what appears in one but not the other — flag as "promising but unconfirmed"
@@ -273,8 +318,15 @@ Surface at a natural pause, never mid-thought, and always name the type and the 
 
 > "🌊 *Mimir's Well: this session may be approaching saturation [technical / cognitive / both] — [the measured numbers, or the behavioral evidence]. Want a Handoff Package to migrate cleanly to a new chat?*"
 
-If yes: generate the full Handoff Package (see `references/handoff.md`).
+If yes: generate the full Handoff Package (see `references/handoff.md`) and save it to
+`handoffs/`: the next session in this project will offer to resume from it.
 If no: continue normally, and re-evaluate in 10–15 exchanges or when the next level is crossed.
+
+### Resuming
+
+When the session-start context says a Handoff Package is waiting, tell the user in one line and
+offer it. Only if they accept: read it, continue from it, and rename the file to end in
+`.loaded.md` so it isn't offered again.
 
 ---
 

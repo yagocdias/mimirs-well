@@ -17,6 +17,7 @@ function sandbox() {
   const env = { ...process.env, TMP: dir, TEMP: dir, TMPDIR: dir };
   for (const k of Object.keys(env))
     if (k === "CLAUDE_CODE_SESSION_ID" || k.startsWith("CLAUDE_PLUGIN_OPTION_") || k.startsWith("MIMIR_")) delete env[k];
+  env.MIMIR_WELL_DIR = path.join(dir, "well"); // never the user's real Well
   return { dir, env };
 }
 
@@ -295,24 +296,25 @@ test("hooks.json: every hook runs exactly as Claude Code would spawn it", () => 
   const sb = sandbox();
   const expand = (s) => s.split("${CLAUDE_PLUGIN_ROOT}").join(ROOT);
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "hooks", "hooks.json"), "utf8"));
-  const payload = JSON.stringify({
-    session_id: "manifest",
-    transcript_path: writeTranscript(sb.dir, [20_000, 40_000]),
-    cwd: sb.dir,
-    hook_event_name: "UserPromptSubmit",
-  });
+  const transcript = writeTranscript(sb.dir, [20_000, 40_000]);
+  const expect = {
+    UserPromptSubmit: (o) => assert.match(o.systemMessage, /^Mimir's Well · 🟢/),
+    SessionStart: (o) => assert.match(o.hookSpecificOutput.additionalContext, /Sentinel is on/),
+  };
   let ran = 0;
   for (const [event, groups] of Object.entries(manifest.hooks))
     for (const group of groups)
       for (const h of group.hooks) {
         assert.equal(h.type, "command", event);
+        assert.ok(expect[event], "no expectation for " + event);
+        const payload = JSON.stringify({ session_id: "manifest", transcript_path: transcript, cwd: sb.dir, hook_event_name: event, source: "startup" });
         const opts = { input: payload, env: { ...sb.env, CLAUDE_PLUGIN_ROOT: ROOT }, encoding: "utf8" };
         // Exec form (`args`): no shell. Otherwise the command line goes to a shell.
         const r = h.args
           ? spawnSync(expand(h.command), h.args.map(expand), opts)
           : spawnSync(expand(h.command), { ...opts, shell: true });
         assert.equal(r.status, 0, event + ": " + (r.error || r.stderr));
-        assert.match(JSON.parse(r.stdout).systemMessage, /^Mimir's Well · 🟢/, event);
+        expect[event](JSON.parse(r.stdout));
         ran++;
       }
   assert.ok(ran > 0, "hooks.json declares no hooks");

@@ -36,11 +36,35 @@ Details: [`context-economics.md`](skills/mimirs-well/references/context-economic
 |---|---|---|
 | `skills/mimirs-well/` | claude.ai **and** Claude Code | The skill: Extraction, Sentinel, Saturation Monitor, Handoff Package |
 | `hooks/hooks.json` + `scripts/saturation-hook.cjs` | Claude Code (plugin) | Measures every turn; tells Claude only when a level is crossed |
+| `scripts/session-start.cjs` | Claude Code (plugin) | At session start: keeps the Sentinel on, points at the project's Well, offers a recent Handoff Package |
+| `scripts/well.cjs` | Claude Code (plugin) | Where the Well lives on disk; the index the skill reads for cross-project synthesis |
 | `scripts/report.cjs` | Claude Code (plugin) | The skill runs it when you ask "are we saturated?" |
 | `scripts/statusline.cjs` | Claude Code (optional, manual) | The meter in Claude Code's footer |
 
 Without the plugin (e.g. on claude.ai), the skill still works — it just says it has no
 measurement and asks you to check your interface's context indicator, instead of guessing.
+
+## The Well on disk
+
+In Claude Code, everything the Well produces is saved, in one place for all your projects, so
+it outlives the session and projects can be compared:
+
+```
+~/.mimir/projects/<project>/
+  reports/YYYY-MM-DD-<topic>.md    Pattern Reports and Synthesis Reports
+  seeds/<name>.md                  Skill Seeds
+  well-log.md                      Sentinel entries you said yes to
+  anchor.md                        the latest Continuity Anchor
+  handoffs/YYYY-MM-DD-HHMM.md      Handoff Packages
+```
+
+A project is the git root of the folder you work in. When you start a new session in a project
+with a Handoff Package from the last 48 hours, Claude offers to resume from it — no pasting.
+Once resumed, the file is renamed `*.loaded.md` and isn't offered again.
+
+Cross-project synthesis starts from an index of every project's reports, then reads only the
+ones that matter. Change the location with the `well_dir` option. On claude.ai, which has no
+file system, the artifacts stay in the conversation.
 
 ## Install
 
@@ -93,6 +117,7 @@ Defaults work out of the box. To change them: `/plugin configure mimirs-well@mim
 | `context_window` | `0` (auto) | Window size. Auto = the real size reported to the status line; else the model's window (Fable, Sonnet 5+, Haiku 5.5+, Opus 4.7+ run with 1M), honoring `CLAUDE_CODE_DISABLE_1M_CONTEXT`, `CLAUDE_CODE_MAX_CONTEXT_TOKENS` and `CLAUDE_CODE_AUTO_COMPACT_WINDOW`; else inferred (a context over 200k implies 1M); else 200k, shown as **assumed** |
 | `cost_factor` | `4` | 🟡 when a turn re-sends this many times the first turn's context |
 | `red_pct` | `70` | 🔴 at this % of the window |
+| `well_dir` | `~/.mimir` | Where the Well keeps reports, seeds, logs and handoffs, one folder per project |
 | `echo_in_reply` | `false` | Ask Claude to end each reply with the meter line — for surfaces that hide hook messages. Adds a line to every reply |
 
 ## Privacy and what it touches
@@ -100,6 +125,8 @@ Defaults work out of the box. To change them: `/plugin configure mimirs-well@mim
 - Reads your **local** session transcript (the `.jsonl` Claude Code already writes) to count tokens.
 - Writes small state files (first-turn size, last level warned, how far the transcript was read)
   under your OS temp dir, in `mimirs-well/`. Files untouched for 7 days are deleted.
+- Saves what the Well produces (reports, seeds, log, handoffs) under `~/.mimir/`, or your `well_dir`.
+  These are your conversations' conclusions: keep that folder out of anything you publish.
 - Sends nothing anywhere. No network calls, no dependencies.
 
 ## Known limits
@@ -121,7 +148,7 @@ A 15-minute checklist for a first-time tester: [TESTING.md](TESTING.md).
 ## Development
 
 ```
-node --test test/meter.test.cjs
+node --test
 ```
 
 The suite runs the hook end to end on synthetic transcripts — including exactly as `hooks.json`

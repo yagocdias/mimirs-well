@@ -1,8 +1,10 @@
 # Sentinel Log Format
 
 The Sentinel Log is a running record of patterns detected passively during a conversation.
-It lives in-session — Claude maintains it mentally (or explicitly in the conversation)
-and offers to compile it at the end of a session where signals were captured.
+Where there is a file system, it lives in the project's `well-log.md` (see "The Well on Disk"
+in SKILL.md): append each entry the user says yes to, so it survives the session. Without
+one, keep it explicitly in the conversation. Either way, offer to compile it at the end of
+a session where signals were captured.
 
 ---
 

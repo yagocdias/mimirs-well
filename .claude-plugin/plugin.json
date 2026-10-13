@@ -33,6 +33,12 @@
       "min": 20,
       "max": 95
     },
+    "well_dir": {
+      "type": "string",
+      "title": "Well folder",
+      "description": "Where Mimir's Well keeps Pattern Reports, Skill Seeds, logs and Handoff Packages, one subfolder per project. Leave empty for ~/.mimir.",
+      "default": ""
+    },
     "echo_in_reply": {
       "type": "boolean",
       "title": "Ask Claude to repeat the meter line in every reply",
