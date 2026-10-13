@@ -56,6 +56,8 @@ Reinicie o Claude Code depois de instalar: os hooks são carregados na abertura.
 
 ### claude.ai (só a skill)
 
+Opcional: para manter os modos passivos sempre ligados num Projeto do claude.ai, cole o bloco de [docs/claude-ai-project-instructions.md](docs/claude-ai-project-instructions.md) nas instruções do Projeto. O Claude Code não precisa disso.
+
 Compacte a pasta `skills/mimirs-well/` em .zip e envie como skill personalizada nas configurações do claude.ai.
 
 ### Opcional: o medidor no rodapé
@@ -101,6 +103,10 @@ Os padrões já funcionam. Para mudar: `/plugin configure mimirs-well@mimirs-wel
   statusline usa campos documentados e não é afetada.
 - **O hook não enxerga o tamanho da janela**: ele deduz (veja `context_window`).
 - **Duas sessões na mesma pasta ao mesmo tempo:** o `report.cjs` mede a que mandou o último prompt.
+
+## Testar
+
+Roteiro de 15 minutos para quem testa pela primeira vez (em inglês): [TESTING.md](TESTING.md).
 
 ## Licença
 

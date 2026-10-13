@@ -59,6 +59,8 @@ Restart Claude Code after installing: hooks are loaded at startup.
 
 ### claude.ai (skill only)
 
+Optional: to keep the passive modes always on inside a claude.ai Project, paste the block in [docs/claude-ai-project-instructions.md](docs/claude-ai-project-instructions.md) into that Project's instructions. Claude Code doesn't need it.
+
 Zip the `skills/mimirs-well/` folder and upload it as a custom skill in claude.ai settings.
 
 ### Optional: the meter in the footer
@@ -107,6 +109,10 @@ Defaults work out of the box. To change them: `/plugin configure mimirs-well@mim
 - **The hook can't see the window size**; it detects it (see `context_window`). Configure it if
   detection is wrong for your setup.
 - **Two sessions in the same folder at once:** `report.cjs` reports the one that sent the last prompt.
+
+## Testing it
+
+A 15-minute checklist for a first-time tester: [TESTING.md](TESTING.md).
 
 ## Development
 
