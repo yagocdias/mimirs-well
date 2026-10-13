@@ -58,7 +58,7 @@ Reinicie o Claude Code depois de instalar: os hooks são carregados na abertura.
 
 Opcional: para manter os modos passivos sempre ligados num Projeto do claude.ai, cole o bloco de [docs/claude-ai-project-instructions.md](docs/claude-ai-project-instructions.md) nas instruções do Projeto. O Claude Code não precisa disso.
 
-Compacte a pasta `skills/mimirs-well/` em .zip e envie como skill personalizada nas configurações do claude.ai.
+Baixe o **`mimirs-well.skill`** da [última release](https://github.com/yagocdias/mimirs-well/releases/latest) e envie como skill personalizada nas configurações do claude.ai. (Ou compacte você mesmo a pasta `skills/mimirs-well/`.)
 
 ### Opcional: o medidor no rodapé
 

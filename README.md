@@ -61,7 +61,7 @@ Restart Claude Code after installing: hooks are loaded at startup.
 
 Optional: to keep the passive modes always on inside a claude.ai Project, paste the block in [docs/claude-ai-project-instructions.md](docs/claude-ai-project-instructions.md) into that Project's instructions. Claude Code doesn't need it.
 
-Zip the `skills/mimirs-well/` folder and upload it as a custom skill in claude.ai settings.
+Download **`mimirs-well.skill`** from the [latest release](https://github.com/yagocdias/mimirs-well/releases/latest) and upload it as a custom skill in claude.ai settings. (Or zip the `skills/mimirs-well/` folder yourself.)
 
 ### Optional: the meter in the footer
 
