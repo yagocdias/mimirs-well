@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.2.0
+
+- **The meter is drawn above the prompt**, in the terminal and in the desktop app (where hook
+  messages aren't shown), from Claude Code's own figures: the real window, the cost so far.
+  A plugin UI module (`hooks/meter-band.tsx`), tested on both surfaces with `claude plugin test`.
+- **Handing off is updating a file.** A project's living `HANDOFF.md` (root, `docs/` or
+  `.claude/`) is the handoff: updated in place in its own structure, with a two-line reply
+  instead of four blocks to paste. "Check the handoffs" resumes from it; the session-start hook
+  names it and offers it when it was updated in the last 48 hours.
+- Run the scripts' tests with `node --test "test/*.test.cjs"`, the band's with `claude plugin test .`.
+
 ## 2.1.0
 
 - **The Well keeps what it produces.** Pattern Reports, Skill Seeds, the Sentinel log, the

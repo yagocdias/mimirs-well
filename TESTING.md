@@ -44,10 +44,10 @@ Open a **new** session in any project and go through these in order. Note what y
 
 | # | Do this | Expected |
 |---|---|---|
-| 1 | Send any prompt | **Terminal:** a line `Mimir's Well · 🟢 context …k (…% of …) · turn ~1.0x the first · N req`. **Desktop app / IDE:** this line may not be shown — that's a known limit, not a failure (see step 4) |
+| 1 | Send any prompt | **Terminal:** a line `Mimir's Well · 🟢 context …k (…% of …) · turn ~1.0x the first · N req`. **Desktop app:** this line isn't shown; the band above the prompt shows the meter instead |
 | 2 | Ask Claude to read a few large files from the project | The context grows. Once a turn re-sends ≥ 1.5× the first turn's context (and ≥ 15% of the window), Claude tells you **in one line** that the session reached 🟡 and asks whether to hand off. It must **not** close anything on its own |
 | 3 | Ask: *"are we saturated?"* | Claude runs the measurement report and quotes real numbers (context, % of window, ×first turn). It must not invent a number |
-| 4 | Ask: *"give me a Handoff Package"* | Four blocks: project-instructions update, session opener, captured patterns, discardable |
+| 4 | Ask: *"hand off this session"* | Claude updates the project's `HANDOFF.md` (or proposes creating `docs/HANDOFF.md`) and replies in two or three lines — **no blocks to copy**. In a new session, *"check the handoffs"* resumes from it |
 | 5 | Ask: *"what can we reuse from this session?"* | Extraction mode: an orientation summary, then at most 3 questions per wave |
 
 ## 4. Optional: the meter in the footer
@@ -65,10 +65,10 @@ Open an issue at https://github.com/yagocdias/mimirs-well/issues with:
 - the output of the report, run from the project folder:
 
   ```
-  node ~/.claude/plugins/cache/mimirs-well/mimirs-well/2.1.0/scripts/report.cjs
+  node ~/.claude/plugins/cache/mimirs-well/mimirs-well/2.2.0/scripts/report.cjs
   ```
 
-  (On Windows: `%USERPROFILE%\.claude\plugins\cache\mimirs-well\mimirs-well\2.1.0\scripts\report.cjs`.)
+  (On Windows: `%USERPROFILE%\.claude\plugins\cache\mimirs-well\mimirs-well\2.2.0\scripts\report.cjs`.)
 
 ⚠️ **Don't attach session transcripts** — they contain your conversation. The report only has numbers.
 

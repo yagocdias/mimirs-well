@@ -29,6 +29,7 @@ topics, loss of focus, repeated context) and late technical signs (contradicting
 earlier decisions, the conversation being summarized).
 Every ~10 exchanges, silently re-evaluate saturation without waiting for a trigger.
 When detected, signal at a natural pause:
-"🌊 Mimir's Well: This session may be approaching saturation [type]. Want a Handoff Package?"
-If confirmed, generate the full Handoff Package per references/handoff.md.
+"🌊 Mimir's Well: This session may be approaching saturation [type]. Want a handoff?"
+If confirmed, write the handoff per references/handoff.md (here, with no file system,
+as one block to open the new chat with).
 ```

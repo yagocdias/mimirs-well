@@ -1,4 +1,4 @@
-// Run with: node --test
+// Run with: node --test "test/*.test.cjs"
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
@@ -144,4 +144,50 @@ test("session start: a resume after the cache expired says what the next turn re
 
 test("session start fails silently on bad stdin", () => {
   assert.equal(runStart(sandbox(), "not json"), null);
+});
+
+test("the project's own living HANDOFF.md is found in the root, docs/ or .claude/, any case", () => {
+  const sb = sandbox();
+  const repo = path.join(sb.dir, "proj");
+  fs.mkdirSync(path.join(repo, ".git"), { recursive: true });
+  assert.equal(well.locate({ root: sb.well, cwd: repo }).handoff, null);
+
+  fs.mkdirSync(path.join(repo, "docs"));
+  fs.writeFileSync(path.join(repo, "docs", "HANDOFF.sessao01.md"), "# archived");
+  assert.equal(well.locate({ root: sb.well, cwd: repo }).handoff, null, "an archived copy is history, not the handoff");
+
+  const living = path.join(repo, "docs", "Handoff.md");
+  fs.writeFileSync(living, "# Handoff");
+  assert.equal(well.locate({ root: sb.well, cwd: path.join(repo, "docs") }).handoff, living);
+
+  const root = path.join(repo, "HANDOFF.md");
+  fs.writeFileSync(root, "# older");
+  ageFile(root, 10);
+  assert.equal(well.projectHandoff(repo).file, living, "the most recently updated wins");
+});
+
+test("session start: a project's living handoff is THE handoff, offered when recent", () => {
+  const sb = sandbox();
+  const repo = path.join(sb.dir, "proj");
+  fs.mkdirSync(path.join(repo, "docs"), { recursive: true });
+  const file = path.join(repo, "docs", "HANDOFF.md");
+  fs.writeFileSync(file, "# Handoff");
+  // A stale Well handoff must not compete with the project's own.
+  const w = well.ensure({ root: sb.well, cwd: repo });
+  fs.writeFileSync(path.join(w.dir, "handoffs", "2026-10-13-1500.md"), "# Handoff");
+
+  const out = runStart(sb, { session_id: "s", cwd: repo, source: "startup" });
+  const ctx = out.hookSpecificOutput.additionalContext;
+  assert.ok(ctx.includes(file), ctx);
+  assert.match(ctx, /That file is the handoff/);
+  assert.match(ctx, /never print blocks to paste/);
+  assert.match(ctx, /offer in one line to resume/);
+  assert.doesNotMatch(ctx, /Handoff Package written/);
+  assert.match(out.systemMessage, /handoff updated .+ ago \(docs\/HANDOFF\.md\)/);
+
+  ageFile(file, 72);
+  const old = runStart(sb, { session_id: "s", cwd: repo, source: "startup" });
+  assert.ok(old.hookSpecificOutput.additionalContext.includes(file), "still named, so 'check the handoffs' works");
+  assert.doesNotMatch(old.hookSpecificOutput.additionalContext, /offer in one line/);
+  assert.equal(old.systemMessage, undefined);
 });

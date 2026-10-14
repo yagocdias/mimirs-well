@@ -1,4 +1,4 @@
-// Run with: node --test test/meter.test.cjs
+// Run with: node --test "test/*.test.cjs"
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");

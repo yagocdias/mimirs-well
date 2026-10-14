@@ -44,7 +44,7 @@ at the right moment preserves clarity, even when you technically could continue.
 
 When either type of saturation is detected, surface this signal at a natural pause:
 
-> "🌊 *Mimir's Well: This session may be approaching saturation [technical / cognitive / both]. Continuing here risks losing context or clarity. Want a Handoff Package to migrate cleanly to a new chat?*"
+> "🌊 *Mimir's Well: This session may be approaching saturation [technical / cognitive / both]. Continuing here risks losing context or clarity. Want me to update the handoff so a new session picks up from here?*"
 
 **Discipline rules:**
 - Never signal mid-thought or mid-task
@@ -56,148 +56,75 @@ When either type of saturation is detected, surface this signal at a natural pau
 
 ---
 
-## The Handoff Package
+## Handing Off
 
-When the user confirms migration, generate a complete Handoff Package.
-This is the single artifact the user needs to open a new session and continue
-without losing anything important.
+A handoff is a file the next session reads, not text the user copies. The user should be
+able to close this session and, in the next one, just say "check the handoffs".
 
-Structure it in four clearly labeled blocks:
+### Where it goes, in this order
 
----
+1. **The project's own living handoff.** Many projects keep a `HANDOFF.md` (in the root,
+   `docs/` or `.claude/`) that every session updates; the session-start context names it.
+   That file is the handoff. Update it in place, keeping its structure, its language and its
+   habits — never impose the template below on it.
+2. **No such file, but a file system.** Propose creating `docs/HANDOFF.md` (or `HANDOFF.md`
+   in the root when there is no `docs/`) with the structure below. It's a file in the repo:
+   ask once. If the user prefers to keep it out of the repo, write it to the Well's
+   `handoffs/YYYY-MM-DD-HHMM.md` instead.
+3. **No file system (claude.ai).** The only case where the handoff is text to paste: give the
+   start-here part as one block, to open the new chat with.
 
-### Block 1 — Project Instructions Update
-Content that should be added or updated in the project's persistent instructions.
-This is for durable context — things that should be true for all future sessions,
-not just the next one.
+### Updating it
 
+- **Rewrite the start-here part at the top** for the next session: session number and date,
+  where things stand, the one next step, and the decisions not to reopen (one line of why
+  each). Replace the previous one; don't stack them.
+- **Prune.** Move what got done out of the open items, drop what no longer applies. A handoff
+  that only grows stops being read.
+- **Keep the project's archive habit.** If old versions sit beside it (`HANDOFF.sessao01.md`
+  and the like), archive the previous version the same way before rewriting.
+- **Durable rules go where they belong.** What is true for every future session (a convention,
+  a confirmed architecture decision) goes to `CLAUDE.md` or Claude Code's memory — show the
+  lines and ask first. The handoff points at them instead of repeating them.
+- **Patterns go to the Well.** Sentinel entries not logged yet are appended to `well-log.md`;
+  the handoff mentions them in a line only if the next session needs them.
+- **No token counts.** They describe a session that is ending; the next one measures itself.
+
+### What to say in the reply
+
+Two or three lines, not the content: what was updated, where, and how to resume. For example:
+
+> Handoff updated in `docs/HANDOFF.md` (session 45: next step is the Siebel migration). In the
+> next session, say "check the handoffs" — or accept when it's offered.
+
+Show the content only if the user asks for it.
+
+### Resuming
+
+When the user says "check the handoffs", "continue from the handoff" (in any language), or
+accepts the offer made at session start: read the project's handoff — or the Well's pending
+one — say in two or three lines where things stand and what the next step is, and start on it.
+A Well handoff file is renamed to end in `.loaded.md` once resumed, so it isn't offered again;
+a project's living `HANDOFF.md` is never renamed.
+
+### Structure for a new handoff file
+
+Write it in the user's language.
+
+```markdown
+# HANDOFF — [project]
+
+## 🔴 Start here — session [N], [date]
+**Where we are:** [current state, in two or three sentences]
+**Next step:** [the one specific thing to do first]
+**Do not reopen:** [decisions already made — one line of why each]
+
+## Open items
+[What's pending, most important first]
+
+## Where things are
+[Files, commands, environments the next session needs to find]
+
+## Traps already paid for
+[What failed and why, so it isn't tried again]
 ```
-## PROJECT INSTRUCTIONS UPDATE
-[Add / Replace / Remove] the following:
-
-[content to add or modify]
-
-Reason: [one sentence explaining why this belongs in project instructions]
-```
-
-If nothing needs to change in project instructions, write: "No changes needed."
-
----
-
-### Block 2 — Session Opener
-The exact text the user should paste as the first message in the new chat.
-This reconstructs the working context — where we are, what we're doing, what decisions
-have been made — so the new session starts with full orientation.
-
-```
-## SESSION OPENER
-Paste this as your first message in the new chat:
-
----
-[Context summary — what this project/conversation is about]
-
-[Current state — where we are right now]
-
-[Active decisions — key choices already made that should not be revisited]
-
-[Next step — the specific thing we were about to do or just started]
-
-[Active skills — which skills should be running in this session]
----
-```
-
-Do not put the old session's token numbers in the opener — they describe a session
-that is ending, and the new one measures itself from zero.
-
-The session opener should be complete enough that no additional explanation is needed.
-If the user pastes it in a new chat, that chat should be immediately productive.
-
-Where there is a file system, also save the whole package to the project's `handoffs/`
-folder (see "The Well on Disk" in SKILL.md). With the plugin installed, the next session in
-this project finds it and offers to resume from it, so pasting becomes optional.
-
----
-
-### Block 3 — Captured Patterns (if any)
-Any patterns logged by the Sentinel during this session that haven't been compiled yet.
-These should be preserved before the session closes.
-
-```
-## CAPTURED PATTERNS
-[List of patterns logged this session, in micro-pattern format]
-
-Recommended action: [compile into Pattern Report / add to Skill Seed / save for later]
-```
-
-If no patterns were logged, write: "No patterns captured this session."
-
----
-
-### Block 4 — Discardable
-What does NOT need to be carried forward. Explicitly listing this reduces the user's
-cognitive load — they don't need to wonder if they're missing something.
-
-```
-## DISCARDABLE
-The following from this session does not need to be carried forward:
-- [item] — [reason it's not needed]
-- [item] — [reason]
-```
-
----
-
-## Handoff Package — Example
-
-**Scenario:** Long session developing two RPA bots, with several skill decisions made
-and a saturation signal triggered mid-way through the second bot's architecture.
-
----
-
-### Block 1 — Project Instructions Update
-Add the following to project instructions:
-
-```
-## RPA Architecture Decisions (confirmed)
-- Config/logic separation: all environment variables in config.yaml, never inline
-- Locator strategy: always define a chain of 3 selectors per element
-- Retry pattern: exponential backoff, max 3 retries, log full context on final failure
-- Bot entry point: always a single main() function with explicit step logging
-```
-
-Reason: These decisions were confirmed across both bots and should apply to all future
-automations in this project.
-
----
-
-### Block 2 — Session Opener
-Paste this as your first message in the new chat:
-
----
-I'm developing two RPA bots for [domain]. Both share a common architecture (config/logic
-separation, locator chains, exponential backoff retry). These decisions are confirmed and
-should not be revisited.
-
-**Current state:** Bot 1 is complete. Bot 2 architecture is defined but not yet implemented.
-We were about to start writing the main orchestration loop for Bot 2.
-
-**Next step:** Write the main() function for Bot 2, following the same entry point pattern
-as Bot 1 (single main(), explicit step logging, early validation before any UI interaction).
-
-**Active skills:** Mimir's Well (Sentinel + Saturation Monitor).
-
----
-
-### Block 3 — Captured Patterns
-- **Early Validation Gate** — validate all preconditions before touching any UI; fail fast
-  with a clear message rather than mid-flow. Transferable to any automation with external deps.
-- **Step Logger Wrapper** — wrap each major step in a logging decorator that records start,
-  end, duration, and outcome. Makes post-mortem debugging significantly faster.
-
-Recommended action: compile into Skill Seed for future RPA skill.
-
----
-
-### Block 4 — Discardable
-- The early debugging discussion about Bot 1's selector failures — resolved, not a pattern
-- The comparison of retry libraries — decision made (custom implementation), debate closed
-- All intermediate code snippets from Bot 1 — final version is in the project files

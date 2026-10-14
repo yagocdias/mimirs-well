@@ -16,7 +16,13 @@
  *     seeds/<name>.md               Skill Seeds
  *     well-log.md                   Sentinel entries, appended
  *     anchor.md                     the latest Continuity Anchor
- *     handoffs/YYYY-MM-DD-HHMM.md   Handoff Packages; "*.loaded.md" once resumed
+ *     handoffs/YYYY-MM-DD-HHMM.md   Handoff Packages of projects with no HANDOFF.md
+ *
+ * WHY THE PROJECT'S OWN HANDOFF COMES FIRST
+ * A handoff is about one project's next session, not cross-project wisdom, and
+ * projects often keep a living HANDOFF.md (in the root or docs/) that every
+ * session updates in place. When one exists, that file is the handoff: the
+ * Well's handoffs/ folder is only for projects that keep none.
  *
  * WHY --root
  * The plugin's `well_dir` option reaches hooks as an env var, but not commands
@@ -88,9 +94,14 @@ function locate({ root, cwd } = {}) {
     const dir = path.join(r, "projects", slug);
     const meta = readJson(path.join(dir, "project.json"));
     // Free, or already ours: take it. Taken by another folder: try the next.
-    if (!meta.path || samePath(meta.path, proj)) return { root: r, project: slug, path: proj, dir, exists: !!meta.path };
+    if (!meta.path || samePath(meta.path, proj)) return withHandoff({ root: r, project: slug, path: proj, dir, exists: !!meta.path });
   }
-  return { root: r, project: hashed, path: proj, dir: path.join(r, "projects", hashed), exists: false };
+  return withHandoff({ root: r, project: hashed, path: proj, dir: path.join(r, "projects", hashed), exists: false });
+}
+
+function withHandoff(w) {
+  const h = projectHandoff(w.path);
+  return { ...w, handoff: h ? h.file : null };
 }
 
 function ensure(opts) {
@@ -117,6 +128,36 @@ function pendingHandoff(dir, { maxAgeH = HANDOFF_MAX_AGE_H, now = Date.now() } =
   if (!best) return null;
   const ageH = (now - best.mtime) / 3_600_000;
   return ageH <= maxAgeH ? { file: best.file, ageH } : null;
+}
+
+const HANDOFF_PLACES = ["", "docs", ".claude"];
+
+/**
+ * The project's own living handoff (HANDOFF.md in the root, docs/ or .claude/,
+ * any case), the most recently updated if several; null if it keeps none.
+ * Archived copies (HANDOFF.sessao01.md and the like) are history, not the handoff.
+ */
+function projectHandoff(projectDir) {
+  let best = null;
+  for (const place of HANDOFF_PLACES) {
+    let names = [];
+    try {
+      names = fs.readdirSync(path.join(projectDir, place));
+    } catch {
+      continue;
+    }
+    for (const name of names) {
+      if (name.toLowerCase() !== "handoff.md") continue;
+      const file = path.join(projectDir, place, name);
+      try {
+        const mtime = fs.statSync(file).mtimeMs;
+        if (!best || mtime > best.mtime) best = { file, mtime };
+      } catch {
+        /* vanished */
+      }
+    }
+  }
+  return best;
 }
 
 /** First Markdown heading, or the file name: enough to choose what to read. */
@@ -160,7 +201,7 @@ function index(opts) {
   return out;
 }
 
-module.exports = { HANDOFF_MAX_AGE_H, wellRoot, projectPath, slugOf, locate, ensure, pendingHandoff, index };
+module.exports = { HANDOFF_MAX_AGE_H, wellRoot, projectPath, slugOf, locate, ensure, projectHandoff, pendingHandoff, index };
 
 if (require.main === module) {
   const args = process.argv.slice(2);

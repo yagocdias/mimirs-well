@@ -54,9 +54,10 @@ its length.
 ${WINDOW_CAVEAT(m)}
 
 What to do: if the next unit of work does NOT depend on what has accumulated
-here, it is cheaper in a fresh session — offer a Handoff Package (mimirs-well
-skill, references/handoff.md). If it DOES depend on it, continue: paying for the
-context is cheaper than rediscovering it.
+here, it is cheaper in a fresh session — offer to hand off: update the project's
+handoff file (mimirs-well skill, references/handoff.md), so the next session
+resumes from it. If it DOES depend on it, continue: paying for the context is
+cheaper than rediscovering it.
 
 Tell the user this in one line and let them choose. Do not close the session on your own.
 `.trim();
@@ -72,7 +73,7 @@ user may still need.
 ${WINDOW_CAVEAT(m)}
 
 What to do: do not start a new unit of work. Propose to the user to hand off now
-and, if they agree, generate the Handoff Package (mimirs-well skill,
+and, if they agree, update the project's handoff file (mimirs-well skill,
 references/handoff.md) while there is still room for it.
 `.trim();
 

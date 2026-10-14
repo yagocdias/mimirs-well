@@ -4,16 +4,17 @@ description: >
   Meta-learning across projects: extracts reusable patterns from a project or conversation,
   quietly flags lessons worth keeping as they happen (Sentinel), keeps them in a Well shared by
   all projects, and tells — by measurement, when its Claude Code hook is installed — when a
-  session should hand off to a fresh one, writing the Handoff Package. Use when the user wants to
-  capture what worked, extract or compare patterns, reuse lessons from other projects, turn
-  experience into a skill, asks whether the session is saturated or how much context is used,
-  says "feed Mimir" or "open the Well", or when a Mimir's Well block (🟡/🔴 saturation, session
+  session should hand off to a fresh one, updating the project's handoff file. Use when the user
+  wants to capture what worked, extract or compare patterns, reuse lessons from other projects,
+  turn experience into a skill, asks whether the session is saturated or how much context is used,
+  asks to update, check or resume from the handoff(s) (in any language), says "feed Mimir" or
+  "open the Well", or when a Mimir's Well block (🟡/🔴 saturation, session
   start) is in context. Not for ordinary coding or writing requests that involve none of these.
 ---
 
 # Mimir's Well
 
-*Version 2.1.* Mimir guarded a well of wisdom beneath Yggdrasil; Odin gave an eye to drink
+*Version 2.2.* Mimir guarded a well of wisdom beneath Yggdrasil; Odin gave an eye to drink
 from it. Wisdom is costly to acquire, worth preserving, and meant to be consulted — not
 rediscovered from scratch each time. This skill distills what is genuinely valuable from any
 project or conversation and keeps it where it can be consulted, reused, or grown into a skill.
@@ -50,7 +51,7 @@ still read literally `${...}`, the plugin isn't installed: use `~/.mimir/project
 | Skill Seed | `seeds/<name>.md` | new file |
 | Sentinel entry the user said yes to | `well-log.md` | append |
 | Continuity Anchor | `anchor.md` | overwrite: only the latest matters |
-| Handoff Package | `handoffs/YYYY-MM-DD-HHMM.md` | new file |
+| Handoff, when the project keeps no `HANDOFF.md` of its own | `handoffs/YYYY-MM-DD-HHMM.md` | new file |
 
 Save each artifact when you produce it and say where in one line. Show it in the reply too when
 the user needs to read it now.
@@ -115,12 +116,16 @@ repeating context, a major new topic about to begin. Without the hook, re-evalua
 Signal at a natural pause, with the type and the evidence, and let the user decide — never hand
 off on your own:
 
-> 🌊 *Mimir's Well: this session may be approaching saturation [technical / cognitive / both] — [measured numbers or behavioral evidence]. Want a Handoff Package to continue cleanly in a new session?*
+> 🌊 *Mimir's Well: this session may be approaching saturation [technical / cognitive / both] — [measured numbers or behavioral evidence]. Want me to update the handoff so a new session picks up from here?*
 
-If yes: write the Handoff Package (`references/handoff.md`) and save it to `handoffs/`.
+**Handing off is updating a file, not printing blocks to paste.** If yes, follow
+`references/handoff.md`: the project's own living `HANDOFF.md` comes first (the session-start
+context names it), updated in place in its own structure; then reply in two or three lines —
+what was updated, where, and that the next session only needs "check the handoffs".
 
-**Resuming.** When the session-start context says a Handoff Package is waiting, tell the user in
-one line. Only if they accept: read it, continue from it, and rename it to end in `.loaded.md`.
+**Resuming.** When the user asks to check or resume from the handoffs, or accepts the offer made
+at session start: read the handoff, say in two or three lines where things stand and the next
+step, and start on it.
 
 ## References
 
@@ -128,5 +133,5 @@ one line. Only if they accept: read it, continue from it, and rename it to end i
 - `references/report-template.md` — Pattern Report template with examples
 - `references/skill-seed-template.md` — Skill Seed template, and how to grow a seed into a skill
 - `references/sentinel-log.md` — Well Log entry format and signal discipline
-- `references/handoff.md` — saturation criteria and the Handoff Package template
+- `references/handoff.md` — saturation criteria, and how to hand off and resume through a file
 - `references/context-economics.md` — why a long session costs quadratically, and why one threshold can't answer both questions

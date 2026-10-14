@@ -57,7 +57,19 @@ function main() {
     );
   }
 
-  if (source === "startup" || source === "clear") {
+  // The project's own living HANDOFF.md, when it keeps one, IS the handoff.
+  const own = w.handoff && well.projectHandoff(w.path);
+  if (own && source !== "resume") {
+    const ageH = (Date.now() - own.mtime) / 3_600_000;
+    const recent = ageH <= well.HANDOFF_MAX_AGE_H && (source === "startup" || source === "clear");
+    context.push(
+      `This project keeps its handoff in ${own.file} (updated ${hours(ageH)} ago). That file is the handoff: ` +
+        "when the user asks to check the handoffs, or to resume, read it and continue from its start-here part; " +
+        "when handing off, update it in place (mimirs-well skill), never print blocks to paste." +
+        (recent ? " It is recent: offer in one line to resume from it." : "")
+    );
+    if (recent) notes.push(`handoff updated ${hours(ageH)} ago (${path.basename(path.dirname(own.file))}/${path.basename(own.file)})`);
+  } else if (source === "startup" || source === "clear") {
     const h = well.pendingHandoff(w.dir);
     if (h) {
       context.push(

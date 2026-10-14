@@ -8,7 +8,8 @@ A meta-learning skill for Claude that does two jobs:
    conversation (Extraction), and quietly flags elegant solutions and hard-won lessons as they
    happen (Sentinel).
 2. **Knows when a session should end, by measurement.** It watches session saturation and, when
-   it's time, writes a **Handoff Package** so a fresh session starts fully oriented.
+   it's time, updates the project's **handoff file** so the next session starts fully oriented —
+   you just say "check the handoffs".
 
 > Mimir guarded a well of wisdom beneath Yggdrasil; Odin gave an eye to drink from it.
 > Wisdom is costly to acquire, worth preserving, and meant to be consulted — not rediscovered.
@@ -34,9 +35,10 @@ Details: [`context-economics.md`](skills/mimirs-well/references/context-economic
 
 | Piece | Where it runs | What it does |
 |---|---|---|
-| `skills/mimirs-well/` | claude.ai **and** Claude Code | The skill: Extraction, Sentinel, Saturation Monitor, Handoff Package |
+| `skills/mimirs-well/` | claude.ai **and** Claude Code | The skill: Extraction, Sentinel, Saturation Monitor, handoff |
+| `hooks/meter-band.tsx` | Claude Code (plugin), terminal **and desktop app** | The meter, drawn above the prompt |
 | `hooks/hooks.json` + `scripts/saturation-hook.cjs` | Claude Code (plugin) | Measures every turn; tells Claude only when a level is crossed |
-| `scripts/session-start.cjs` | Claude Code (plugin) | At session start: keeps the Sentinel on, points at the project's Well, offers a recent Handoff Package |
+| `scripts/session-start.cjs` | Claude Code (plugin) | At session start: keeps the Sentinel on, points at the project's Well, offers a recent handoff |
 | `scripts/well.cjs` | Claude Code (plugin) | Where the Well lives on disk; the index the skill reads for cross-project synthesis |
 | `scripts/report.cjs` | Claude Code (plugin) | The skill runs it when you ask "are we saturated?" |
 | `scripts/statusline.cjs` | Claude Code (optional, manual) | The meter in Claude Code's footer |
@@ -55,12 +57,17 @@ it outlives the session and projects can be compared:
   seeds/<name>.md                  Skill Seeds
   well-log.md                      Sentinel entries you said yes to
   anchor.md                        the latest Continuity Anchor
-  handoffs/YYYY-MM-DD-HHMM.md      Handoff Packages
+  handoffs/YYYY-MM-DD-HHMM.md      handoffs of projects that keep no HANDOFF.md
 ```
 
-A project is the git root of the folder you work in. When you start a new session in a project
-with a Handoff Package from the last 48 hours, Claude offers to resume from it — no pasting.
-Once resumed, the file is renamed `*.loaded.md` and isn't offered again.
+A project is the git root of the folder you work in.
+
+**Handoffs live in the project.** If it keeps a living `HANDOFF.md` (in the root, `docs/` or
+`.claude/`), that file is the handoff: Claude updates it in place, in its own structure, and
+replies in two lines instead of printing blocks to paste. A project without one gets
+`docs/HANDOFF.md` (Claude asks first) or, if you'd rather keep it out of the repo, a file in the
+Well. In the next session, say "check the handoffs" — or accept when Claude offers a handoff
+updated in the last 48 hours.
 
 Cross-project synthesis starts from an index of every project's reports, then reads only the
 ones that matter. Change the location with the `well_dir` option. On claude.ai, which has no
@@ -87,9 +94,16 @@ Optional: to keep the passive modes always on inside a claude.ai Project, paste 
 
 Download **`mimirs-well.skill`** from the [latest release](https://github.com/yagocdias/mimirs-well/releases/latest) and upload it as a custom skill in claude.ai settings. (Or zip the `skills/mimirs-well/` folder yourself.)
 
+### The meter above the prompt
+
+The plugin draws the meter in a band above the prompt — in the terminal and in the desktop app,
+where hook messages aren't shown: `🟡 Mimir's Well · 291k of 1M (29%) · turn ~4.2x the first ·
+~$12.50 est.` It reads Claude Code's own figures, so the window is the real one. Nothing to set
+up: it needs a Claude Code version with plugin UI modules; older ones keep the hook's line.
+
 ### Optional: the meter in the footer
 
-Some interfaces don't display hook messages. The status line is drawn by Claude Code itself.
+The status line is an alternative for terminals. The status line is drawn by Claude Code itself.
 A plugin can't install a status line, so this step is manual:
 
 1. Copy `scripts/statusline.cjs` to a stable place, e.g. `~/.claude/mimirs-well-statusline.cjs`
@@ -148,8 +162,11 @@ A 15-minute checklist for a first-time tester: [TESTING.md](TESTING.md).
 ## Development
 
 ```
-node --test
+node --test "test/*.test.cjs"
+claude plugin test .
 ```
+
+The first runs the scripts' suite; the second, the band's, inside Claude Code's own engine.
 
 The suite runs the hook end to end on synthetic transcripts — including exactly as `hooks.json`
 declares it — and checks that the hook and the status line can't disagree about the level.

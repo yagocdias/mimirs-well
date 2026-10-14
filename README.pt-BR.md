@@ -31,8 +31,9 @@ Detalhes: [`context-economics.md`](skills/mimirs-well/references/context-economi
 
 | Peça | Onde roda | O que faz |
 |---|---|---|
-| `skills/mimirs-well/` | claude.ai **e** Claude Code | A skill: Extração, Sentinela, Monitor de Saturação, Pacote de Handoff |
-| `scripts/session-start.cjs` | Claude Code (plugin) | No início da sessão: mantém a Sentinela ligada, aponta o poço do projeto, oferece um Handoff Package recente |
+| `skills/mimirs-well/` | claude.ai **e** Claude Code | A skill: Extração, Sentinela, Monitor de Saturação, handoff |
+| `hooks/meter-band.tsx` | Claude Code (plugin), terminal **e app desktop** | O medidor, desenhado acima do prompt |
+| `scripts/session-start.cjs` | Claude Code (plugin) | No início da sessão: mantém a Sentinela ligada, aponta o poço do projeto, oferece um handoff recente |
 | `scripts/well.cjs` | Claude Code (plugin) | Onde o poço fica no disco; o índice que a skill lê para a síntese entre projetos |
 | `hooks/hooks.json` + `scripts/saturation-hook.cjs` | Claude Code (plugin) | Mede a cada turno e só fala com o Claude quando um nível é cruzado |
 | `scripts/report.cjs` | Claude Code (plugin) | A skill roda quando você pergunta "estamos saturados?" |
@@ -52,12 +53,17 @@ sobreviver à sessão e permitir comparar projetos:
   seeds/<nome>.md                  Skill Seeds
   well-log.md                      entradas da Sentinela que você aceitou
   anchor.md                        a Continuity Anchor mais recente
-  handoffs/AAAA-MM-DD-HHMM.md      Handoff Packages
+  handoffs/AAAA-MM-DD-HHMM.md      handoffs de projetos sem HANDOFF.md próprio
 ```
 
-Um projeto é a raiz git da pasta em que você trabalha. Ao abrir uma sessão nova num projeto
-com um Handoff Package das últimas 48 horas, o Claude oferece retomar dele, sem colar nada.
-Depois de retomado, o arquivo vira `*.loaded.md` e não é oferecido de novo.
+Um projeto é a raiz git da pasta em que você trabalha.
+
+**O handoff mora no projeto.** Se ele tem um `HANDOFF.md` vivo (na raiz, em `docs/` ou em
+`.claude/`), esse arquivo é o handoff: o Claude o atualiza no lugar, na estrutura dele, e
+responde em duas linhas, sem blocos para copiar. Um projeto sem esse arquivo ganha um
+`docs/HANDOFF.md` (o Claude pergunta antes) ou, se você preferir deixá-lo fora do repositório,
+um arquivo no poço. Na sessão seguinte, diga "verifique os handoffs", ou aceite quando o Claude
+oferecer um handoff atualizado nas últimas 48 horas.
 
 A síntese entre projetos começa por um índice dos relatórios de todos os projetos e lê só os
 que importam. Mude o local com a opção `well_dir`. No claude.ai, que não tem sistema de
@@ -84,9 +90,17 @@ Opcional: para manter os modos passivos sempre ligados num Projeto do claude.ai,
 
 Baixe o **`mimirs-well.skill`** da [última release](https://github.com/yagocdias/mimirs-well/releases/latest) e envie como skill personalizada nas configurações do claude.ai. (Ou compacte você mesmo a pasta `skills/mimirs-well/`.)
 
+### O medidor acima do prompt
+
+O plugin desenha o medidor numa faixa acima do prompt, no terminal e no app desktop, onde as
+mensagens dos hooks não aparecem: `🟡 Mimir's Well · 291k of 1M (29%) · turn ~4.2x the first ·
+~$12.50 est.` Ele lê os números do próprio Claude Code, então a janela é a real. Não precisa
+configurar nada; exige uma versão do Claude Code com módulos de interface para plugins (nas
+mais antigas fica a linha do hook).
+
 ### Opcional: o medidor no rodapé
 
-Algumas interfaces não mostram as mensagens dos hooks. A statusline é desenhada pelo próprio
+A statusline é uma alternativa para o terminal. A statusline é desenhada pelo próprio
 Claude Code. Como plugin não pode instalar statusline, este passo é manual:
 
 1. Copie `scripts/statusline.cjs` para um lugar estável, por exemplo
