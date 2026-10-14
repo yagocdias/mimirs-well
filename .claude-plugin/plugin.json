@@ -1,14 +1,23 @@
 {
   "name": "mimirs-well",
   "displayName": "Mimir's Well",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Meta-learning skill that captures reusable patterns, plus a measured session-saturation signal (real token counts, not guesses) and a Handoff Package for clean migration to a new session.",
   "author": {
     "name": "yagocdias"
   },
   "repository": "https://github.com/yagocdias/mimirs-well",
   "license": "MIT",
-  "keywords": ["meta-learning", "patterns", "handoff", "context-window", "saturation", "tokens"],
+  "keywords": [
+    "meta-learning",
+    "patterns",
+    "handoff",
+    "context-window",
+    "saturation",
+    "tokens"
+  ],
+  "hooks": "./hooks/band.json",
+  "types": "./types/index.d.ts",
   "userConfig": {
     "context_window": {
       "type": "number",
