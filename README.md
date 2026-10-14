@@ -132,7 +132,7 @@ Defaults work out of the box. To change them: `/plugin configure mimirs-well@mim
 | `cost_factor` | `4` | 🟡 when a turn re-sends this many times the first turn's context |
 | `red_pct` | `70` | 🔴 at this % of the window |
 | `well_dir` | `~/.mimir` | Where the Well keeps reports, seeds, logs and handoffs, one folder per project |
-| `echo_in_reply` | `false` | Ask Claude to end each reply with the meter line — for surfaces that hide hook messages. Adds a line to every reply |
+| `echo_in_reply` | `false` | Ask Claude to end each reply with the meter line — for surfaces that show neither hook messages nor the band above the prompt. Adds a line to every reply |
 
 ## Privacy and what it touches
 

@@ -127,7 +127,7 @@ Os padrões já funcionam. Para mudar: `/plugin configure mimirs-well@mimirs-wel
 | `cost_factor` | `4` | 🟡 quando o turno reenvia esse múltiplo do contexto do primeiro |
 | `red_pct` | `70` | 🔴 nessa % da janela |
 | `well_dir` | `~/.mimir` | Onde o poço guarda relatórios, seeds, log e handoffs, uma pasta por projeto |
-| `echo_in_reply` | `false` | Pede ao Claude que termine cada resposta com a linha do medidor, para interfaces que escondem as mensagens dos hooks |
+| `echo_in_reply` | `false` | Pede ao Claude que termine cada resposta com a linha do medidor, para interfaces que não mostram nem as mensagens dos hooks nem a faixa acima do prompt |
 
 ## Privacidade
 

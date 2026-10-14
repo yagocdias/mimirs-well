@@ -94,8 +94,9 @@ prematurely). Write a Synthesis Report in the Pattern Report format, adding to e
 
 ## Saturation
 
-**Measure, don't guess.** Claude cannot perceive how full its own context is. For the
-technical side, use the best source available:
+**Measure, don't guess.** Claude cannot perceive how full its own context is. With the plugin,
+the person already sees the meter in a band above the prompt (terminal and desktop app): don't
+repeat it in replies unless asked. For the technical side, use the best source available:
 
 1. **A measurement in context.** With the plugin installed, a hook injects a `🟡 MIMIR'S WELL`
    or `🔴 MIMIR'S WELL` block when a level is crossed. Act as it says and quote its numbers.
