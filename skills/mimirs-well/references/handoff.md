@@ -94,7 +94,7 @@ able to close this session and, in the next one, just say "check the handoffs".
 
 Two or three lines, not the content: what was updated, where, and how to resume. For example:
 
-> Handoff updated in `docs/HANDOFF.md` (session 45: next step is the Siebel migration). In the
+> Handoff updated in `docs/HANDOFF.md` (session 45: next step is the database migration). In the
 > next session, say "check the handoffs" — or accept when it's offered.
 
 Show the content only if the user asks for it.
